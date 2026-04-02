@@ -1,5 +1,8 @@
 /**
- * Supports either NEXT_PUBLIC_* (preferred for Next.js) or legacy names from .env.local.
+ * Browser-safe Supabase config (NEXT_PUBLIC_* is inlined by Next.js).
+ *
+ * Dashboard naming: “Publishable” ≈ legacy anon (safe in the client).
+ * “Secret” / service role must never use NEXT_PUBLIC_* or ship to the browser.
  */
 export function getSupabaseUrl(): string {
   return (
@@ -9,6 +12,7 @@ export function getSupabaseUrl(): string {
   );
 }
 
+/** Publishable / anon key — only this belongs in the client bundle. */
 export function getSupabaseAnonKey(): string {
   return (
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
