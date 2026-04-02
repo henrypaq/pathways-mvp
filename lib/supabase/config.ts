@@ -22,3 +22,8 @@ export function getSupabaseAnonKey(): string {
     ""
   );
 }
+
+/** True when browser bundle can create a Supabase client (both URL + publishable key). */
+export function isSupabaseBrowserConfigured(): boolean {
+  return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
+}

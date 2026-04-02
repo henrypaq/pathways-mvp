@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { isSupabaseBrowserConfigured } from "@/lib/supabase/config";
 import type { User } from "@supabase/supabase-js";
 
 export function AuthNav() {
-  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [user, setUser] = useState<User | null | undefined>(() =>
+    isSupabaseBrowserConfigured() ? undefined : null,
+  );
 
   useEffect(() => {
+    if (!isSupabaseBrowserConfigured()) {
+      setUser(null);
+      return;
+    }
+
     const supabase = createClient();
     void supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null);

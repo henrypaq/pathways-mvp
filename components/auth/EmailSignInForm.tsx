@@ -93,7 +93,7 @@ export function EmailSignInForm({ nextPath }: Props) {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full rounded-full bg-[#171717] py-3 text-sm font-medium text-white hover:bg-[#404040] transition-colors disabled:opacity-60"
+        className="w-full rounded-full bg-[#534AB7] py-3 text-sm font-medium text-white shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors disabled:opacity-60"
       >
         {status === "sending" ? "Sending link…" : "Continue with email"}
       </button>
