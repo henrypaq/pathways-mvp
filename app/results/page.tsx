@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Sparkles, RefreshCw, ArrowLeft, ExternalLink, AlertTriangle } from 'lucide-react'
 import type { PathwaysProfile } from '@/types/voice'
@@ -163,7 +164,12 @@ export default function ResultsPage() {
           >
             <ArrowLeft size={14} /> Back
           </button>
-          <span className="text-[14px] font-semibold text-[#171717]">Pathways</span>
+          <Link
+            href="/"
+            className="text-[14px] font-semibold text-[#171717] hover:text-[#534AB7] transition-colors"
+          >
+            Pathways
+          </Link>
         </div>
 
         <div className="flex items-center gap-2">

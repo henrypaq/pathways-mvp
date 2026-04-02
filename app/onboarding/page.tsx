@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useOnboardingStore } from "@/lib/onboardingStore";
@@ -57,7 +58,12 @@ export default function OnboardingPage() {
               Back
             </motion.button>
           )}
-          <span className="text-sm font-semibold text-[#171717]">Pathways</span>
+          <Link
+            href="/"
+            className="text-sm font-semibold text-[#171717] hover:text-[#534AB7] transition-colors shrink-0"
+          >
+            Pathways
+          </Link>
         </div>
 
         {/* Step indicator (dots) */}

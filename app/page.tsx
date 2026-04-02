@@ -33,7 +33,12 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5">
-        <span className="text-[15px] font-semibold tracking-tight text-[#171717]">Pathways</span>
+        <Link
+          href="/"
+          className="text-[15px] font-semibold tracking-tight text-[#171717] hover:text-[#534AB7] transition-colors duration-200"
+        >
+          Pathways
+        </Link>
         <AuthNav />
       </nav>
 

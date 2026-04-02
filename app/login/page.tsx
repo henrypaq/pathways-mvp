@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: Props) {
       <nav className="relative z-10 flex items-center justify-between px-6 py-5 md:px-8 border-b border-[#F5F5F5]/80 bg-white/80 backdrop-blur-sm">
         <Link
           href="/"
-          className="text-[15px] font-semibold tracking-tight text-[#171717]"
+          className="text-[15px] font-semibold tracking-tight text-[#171717] hover:text-[#534AB7] transition-colors duration-200"
         >
           Pathways
         </Link>
