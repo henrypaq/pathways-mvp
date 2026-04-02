@@ -1,0 +1,7 @@
+# Next.js Runtime plugin is usually enabled in the Netlify UI.
+# https://docs.netlify.com/build/frameworks/framework-setup-guides/next-js/overview/
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"

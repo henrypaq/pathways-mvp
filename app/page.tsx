@@ -34,7 +34,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5">
         <span className="text-[15px] font-semibold tracking-tight text-[#171717]">Pathways</span>
         <Link
-          href="/onboarding"
+          href="/login"
           className="text-sm text-[#737373] hover:text-[#171717] transition-colors duration-200"
         >
           Sign in

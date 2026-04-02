@@ -8,6 +8,7 @@ import { ProfilePanel } from "@/components/voice/ProfilePanel";
 import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
+import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
 
 
 function VoiceMode() {
@@ -29,8 +30,7 @@ function VoiceMode() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSpeechSupported =
-    typeof window !== "undefined" &&
-    !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    typeof window !== "undefined" && !!getSpeechRecognitionCtor();
 
   const handleOrbTap = () => {
     if (orbState === "idle") {

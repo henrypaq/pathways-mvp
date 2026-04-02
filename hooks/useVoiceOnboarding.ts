@@ -3,19 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { OrbState, PathwaysProfile, ConversationTurn } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
-
-// Browser speech recognition — available in Chrome/Edge
-const SpeechRecognition =
-  typeof window !== 'undefined'
-    ? (window.SpeechRecognition || window.webkitSpeechRecognition)
-    : null
-
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
-  }
-}
+import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
@@ -77,7 +65,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   useEffect(() => { historyRef.current = history }, [history])
   useEffect(() => { profileRef.current = profile }, [profile])
 
-  const recognitionRef = useRef<InstanceType<NonNullable<typeof SpeechRecognition>> | null>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
   const hasWelcomed = useRef(false)
 
   // runTurn stored in ref to avoid stale closures
@@ -221,7 +209,8 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   }, [])
 
   const startListening = useCallback(() => {
-    if (!SpeechRecognition) {
+    const Ctor = getSpeechRecognitionCtor()
+    if (!Ctor) {
       console.error('[voice] SpeechRecognition not supported in this browser')
       return
     }
@@ -232,7 +221,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     setOrbState('listening')
     setErrorMessage(null)
 
-    const recognition = new SpeechRecognition()
+    const recognition = new Ctor()
     recognition.continuous = false
     recognition.interimResults = false
     recognition.lang = 'en-US'
