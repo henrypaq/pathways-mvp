@@ -1,0 +1,9 @@
+.git
+.next
+node_modules
+__pycache__
+*.pyc
+.env
+data_scrapper/data/
+data_scrapper/db/
+data_scrapper/logs/

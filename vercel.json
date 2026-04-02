@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)api/' ':(exclude)data_scrapper/'",
+  "functions": {
+    "app/**/*.tsx": {
+      "maxDuration": 30
+    }
+  }
+}

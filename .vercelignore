@@ -1,0 +1,23 @@
+# Python backend — deployed separately to Railway, not Vercel
+api/
+data_scrapper/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Local data files
+data_scrapper/data/
+data_scrapper/db/
+
+# Dev files
+.env
+.env.local
+*.log

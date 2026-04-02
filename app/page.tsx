@@ -1,0 +1,162 @@
+"use client";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { ArrowRight, Shield, BookOpen, FileSearch, ChevronRight } from "lucide-react";
+
+const fadeUp = {
+  initial: { opacity: 0, y: 24 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
+};
+
+const features = [
+  {
+    icon: Shield,
+    title: "Profile-aware guidance",
+    description: "Every answer tailored to your nationality, profession, and situation.",
+  },
+  {
+    icon: BookOpen,
+    title: "Cited official sources",
+    description: "Every claim grounded in official government websites, with timestamps.",
+  },
+  {
+    icon: FileSearch,
+    title: "Document AI",
+    description: "Upload your documents and get instant gap analysis and feedback.",
+  },
+];
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5">
+        <span className="text-[15px] font-semibold tracking-tight text-[#171717]">Pathways</span>
+        <Link
+          href="/onboarding"
+          className="text-sm text-[#737373] hover:text-[#171717] transition-colors duration-200"
+        >
+          Sign in
+        </Link>
+      </nav>
+
+      {/* Hero */}
+      <section className="relative flex flex-col items-center justify-center min-h-screen px-6 text-center overflow-hidden">
+        {/* Radial background glow */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 50% at 50% 40%, #EEEDFE 0%, transparent 70%)",
+          }}
+        />
+
+        <motion.div
+          className="relative z-10 max-w-3xl mx-auto"
+          initial="initial"
+          animate="animate"
+          variants={{
+            animate: { transition: { staggerChildren: 0.12 } },
+          }}
+        >
+          <motion.div
+            variants={fadeUp}
+            className="inline-flex items-center gap-2 bg-white border border-[#E5E5E5] rounded-full px-4 py-1.5 text-xs text-[#737373] mb-8 shadow-sm"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] animate-pulse" />
+            AI-powered immigration guidance
+          </motion.div>
+
+          <motion.h1
+            variants={fadeUp}
+            className="text-5xl sm:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.08] text-[#171717] mb-6"
+          >
+            Your immigration
+            <br />
+            <span className="text-[#534AB7]">journey, guided by AI.</span>
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUp}
+            className="text-lg sm:text-xl text-[#737373] leading-relaxed mb-10 max-w-xl mx-auto"
+          >
+            Personalized guidance, official sources, your language.
+          </motion.p>
+
+          <motion.div variants={fadeUp}>
+            <Link href="/onboarding">
+              <motion.span
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="inline-flex items-center gap-2 bg-[#534AB7] text-white text-base font-medium px-8 py-4 rounded-full shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors duration-200 cursor-pointer"
+              >
+                Begin your journey
+                <ArrowRight size={18} />
+              </motion.span>
+            </Link>
+          </motion.div>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.6 }}
+        >
+          <span className="text-xs text-[#D4D4D4]">Scroll to learn more</span>
+          <div className="w-px h-8 bg-gradient-to-b from-[#D4D4D4] to-transparent" />
+        </motion.div>
+      </section>
+
+      {/* Feature cards */}
+      <section className="px-6 pb-32 max-w-5xl mx-auto">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1], staggerChildren: 0.1 }}
+        >
+          {features.map((f, i) => (
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+              className="group bg-white border border-[#E5E5E5] rounded-[12px] p-8 hover:border-[#534AB7] hover:-translate-y-1 hover:shadow-[0_4px_12px_rgba(83,74,183,0.08)] transition-all duration-250 cursor-default"
+            >
+              <div className="w-10 h-10 rounded-[10px] bg-[#EEEDFE] flex items-center justify-center mb-5 group-hover:bg-[#534AB7] transition-colors duration-200">
+                <f.icon size={18} className="text-[#534AB7] group-hover:text-white transition-colors duration-200" />
+              </div>
+              <h3 className="font-semibold text-[#171717] mb-2 text-[15px]">{f.title}</h3>
+              <p className="text-sm text-[#737373] leading-relaxed">{f.description}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Bottom CTA */}
+        <motion.div
+          className="text-center mt-20"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <p className="text-sm text-[#A3A3A3] mb-4">Ready to find your pathway?</p>
+          <Link href="/onboarding">
+            <motion.span
+              whileHover={{ gap: "10px" }}
+              className="inline-flex items-center gap-2 text-sm font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors cursor-pointer"
+            >
+              Get started for free
+              <ChevronRight size={16} />
+            </motion.span>
+          </Link>
+        </motion.div>
+      </section>
+    </div>
+  );
+}

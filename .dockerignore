@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+__pycache__
+**/*.pyc
+**/__pycache__
+.env
+# Pre-built ChromaDB data — excluded because startup scrape populates it at deploy time.
+# To bake data into the image instead, comment these out and remove the scrape step from railway.toml.
+# data_scrapper/data/
+# data_scrapper/db/
+data_scrapper/logs/

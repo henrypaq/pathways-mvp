@@ -1,0 +1,16 @@
+"use client";
+import { Onboarding7 } from "@/components/onboarding/Onboarding7";
+
+export default function DashboardPage() {
+  return (
+    <div className="fixed inset-0 bg-white flex flex-col">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5F5F5]">
+        <span className="text-sm font-semibold text-[#171717]">Pathways</span>
+        <span className="text-xs text-[#A3A3A3]">Application Dashboard</span>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <Onboarding7 />
+      </div>
+    </div>
+  );
+}
