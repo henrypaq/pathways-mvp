@@ -43,13 +43,6 @@ export default async function AccountPage() {
         <h1 className="text-[15px] font-semibold tracking-tight text-[#171717]">
           Account
         </h1>
-        <div className="flex-1" />
-        <Link
-          href="/"
-          className="text-[13px] text-[#A3A3A3] hover:text-[#534AB7] transition-colors"
-        >
-          Pathways
-        </Link>
       </header>
 
       <main className="flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-10">
