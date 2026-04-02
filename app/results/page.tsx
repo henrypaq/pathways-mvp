@@ -9,6 +9,7 @@ import type { PathwaysProfile } from '@/types/voice'
 import type { RecommendationsResult } from '@/lib/types'
 import { PathwayMatchCard } from '@/components/results/PathwayMatchCard'
 import { PersonalizedRoadmap } from '@/components/results/PersonalizedRoadmap'
+import { AuthNav } from '@/components/auth/AuthNav'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 
@@ -172,9 +173,9 @@ export default function ResultsPage() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 sm:gap-4">
           {result && (
-            <span className="text-[11px] text-[#A3A3A3]">
+            <span className="hidden sm:inline text-[11px] text-[#A3A3A3]">
               Based on {result.sources.length} official IRCC sources
             </span>
           )}
@@ -186,6 +187,7 @@ export default function ResultsPage() {
               <RefreshCw size={11} /> Refresh
             </button>
           )}
+          <AuthNav />
         </div>
       </div>
 

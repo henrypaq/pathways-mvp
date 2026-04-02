@@ -11,6 +11,7 @@ import { Onboarding4 } from "@/components/onboarding/Onboarding4";
 import { Onboarding5 } from "@/components/onboarding/Onboarding5";
 import { Onboarding6 } from "@/components/onboarding/Onboarding6";
 import { Onboarding7 } from "@/components/onboarding/Onboarding7";
+import { AuthNav } from "@/components/auth/AuthNav";
 
 const TOTAL_STEPS = 7; // steps 0..7
 
@@ -45,14 +46,14 @@ export default function OnboardingPage() {
   return (
     <div className="fixed inset-0 bg-white flex flex-col">
       {/* Minimal top nav */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5F5F5] flex-shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 px-4 sm:px-6 py-4 border-b border-[#F5F5F5] flex-shrink-0">
+        <div className="flex flex-1 min-w-0 items-center gap-3">
           {showBack && (
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               onClick={prevStep}
-              className="flex items-center gap-1 text-sm text-[#A3A3A3] hover:text-[#171717] transition-colors"
+              className="flex items-center gap-1 text-sm text-[#A3A3A3] hover:text-[#171717] transition-colors shrink-0"
             >
               <ChevronLeft size={16} />
               Back
@@ -60,14 +61,13 @@ export default function OnboardingPage() {
           )}
           <Link
             href="/"
-            className="text-sm font-semibold text-[#171717] hover:text-[#534AB7] transition-colors shrink-0"
+            className="text-sm font-semibold text-[#171717] hover:text-[#534AB7] transition-colors truncate"
           >
             Pathways
           </Link>
         </div>
 
-        {/* Step indicator (dots) */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-shrink-0 items-center gap-1.5">
           {Array.from({ length: TOTAL_STEPS + 1 }).map((_, i) => (
             <div
               key={i}
@@ -82,7 +82,9 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <div className="w-16" /> {/* spacer */}
+        <div className="flex flex-1 min-w-0 justify-end items-center text-sm">
+          <AuthNav />
+        </div>
       </div>
 
       {/* Step content */}
