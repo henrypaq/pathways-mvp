@@ -7,6 +7,7 @@
 export function getSupabaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL ??
     process.env.SUPABASE_PROJECT_URL ??
     ""
   );
