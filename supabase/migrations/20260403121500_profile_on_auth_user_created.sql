@@ -28,8 +28,5 @@ CREATE TRIGGER on_auth_user_created
 
 COMMENT ON FUNCTION public.handle_new_user() IS 'Creates public.profiles when a new auth.users row is inserted.';
 
--- Existing users (signed up before this migration) have no profile row. Backfill example:
--- INSERT INTO public.profiles (user_id, data, completeness_score)
--- SELECT id, '{}'::jsonb, 0 FROM auth.users u
--- WHERE NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = u.id)
--- ON CONFLICT (user_id) DO NOTHING;
+-- Backfill existing auth users: run migration 20260403140000_backfill_profiles_existing_auth_users.sql
+-- or supabase/scripts/backfill_profiles_from_auth.sql in the SQL Editor (role: postgres).
