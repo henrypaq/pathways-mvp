@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { OrbState, PathwaysProfile, ConversationTurn } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
 import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
+import { createClient } from '@/lib/supabase/client'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
@@ -134,6 +135,24 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         console.log('[voice] onboarding complete')
         setIsComplete(true)
         localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
+
+        // Save profile to Supabase then trigger scoring (fire-and-forget, same as ManualProfileForm)
+        void (async () => {
+          try {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              await supabase.from('profiles').insert({ user_id: user.id, data: profileRef.current })
+            }
+          } catch (err) {
+            console.error('[voice] Failed to save profile to Supabase:', err)
+          }
+          try {
+            await fetch('/api/recommendations/generate', { method: 'POST' })
+          } catch (err) {
+            console.error('[voice] Scoring failed silently:', err)
+          }
+        })()
       }
 
       // ── 5. CLEAN TEXT FOR TTS ─────────────────────────────────────────

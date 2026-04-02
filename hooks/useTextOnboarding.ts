@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { PathwaysProfile, ConversationTurn, ChatMessage } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
+import { createClient } from '@/lib/supabase/client'
 
 // Reuses /api/voice/chat — the endpoint is mode-agnostic (no TTS, no audio in chat path)
 const CHAT_API = '/api/voice/chat'
@@ -97,6 +98,24 @@ export function useTextOnboarding(): UseTextOnboardingReturn {
       if (fullText.includes('ONBOARDING_COMPLETE')) {
         setIsComplete(true)
         localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
+
+        // Save profile to Supabase then trigger scoring (fire-and-forget, same as ManualProfileForm)
+        void (async () => {
+          try {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              await supabase.from('profiles').insert({ user_id: user.id, data: profileRef.current })
+            }
+          } catch (err) {
+            console.error('[text] Failed to save profile to Supabase:', err)
+          }
+          try {
+            await fetch('/api/recommendations/generate', { method: 'POST' })
+          } catch (err) {
+            console.error('[text] Scoring failed silently:', err)
+          }
+        })()
       }
 
       // Strip tokens → clean assistant text

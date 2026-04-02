@@ -23,6 +23,18 @@ export interface PathwaysProfile {
   destination_region?: string
   field_of_study?: string
   language_scores?: string
+  language_test?: {
+    taken: 'yes' | 'no' | 'planning'
+    testName?: 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
+    scores?: {
+      listening: number
+      reading: number
+      writing: number
+      speaking: number
+    }
+    selfAssessment?: 'native' | 'fluent' | 'intermediate' | 'basic'
+  } | null
+  years_of_experience?: '0' | '1' | '2' | '3' | '4' | '5+' | null
 }
 
 export interface ConversationTurn {
@@ -66,4 +78,6 @@ export const PROFILE_FIELD_LABELS: Record<keyof PathwaysProfile, string> = {
   destination_region: 'Region preference',
   field_of_study: 'Field of study',
   language_scores: 'Language scores',
+  language_test: 'Language test',
+  years_of_experience: 'Years of experience',
 }

@@ -6,6 +6,7 @@ import { ChevronDown, Check, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useOnboardingStore } from '@/lib/onboardingStore'
 import type { PathwaysProfile } from '@/types/voice'
+import { createClient } from '@/lib/supabase/client'
 import { CountrySelect } from '@/components/ui/CountrySelect'
 import { DateOfBirthPicker } from '@/components/ui/DateOfBirthPicker'
 
@@ -27,9 +28,18 @@ interface FormValues {
   purpose: string
   language_ability: string
   timeline: string
+  // Language test (follows language_ability)
+  language_test_taken: string  // '' | 'yes' | 'no' | 'planning'
+  language_test_name: string   // '' | 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
+  language_test_listening: string
+  language_test_reading: string
+  language_test_writing: string
+  language_test_speaking: string
+  language_test_self: string   // '' | 'native' | 'fluent' | 'intermediate' | 'basic'
   // Optional
   occupation: string
   is_employed: string
+  years_of_experience: string  // '' | '0' | '1' | '2' | '3' | '4' | '5+'
   education_level: string
   family_situation: string
   has_job_offer: string
@@ -44,13 +54,47 @@ const EMPTY: FormValues = {
   purpose: '',
   language_ability: '',
   timeline: '',
+  language_test_taken: '',
+  language_test_name: '',
+  language_test_listening: '',
+  language_test_reading: '',
+  language_test_writing: '',
+  language_test_speaking: '',
+  language_test_self: '',
   occupation: '',
   is_employed: '',
+  years_of_experience: '',
   education_level: '',
   family_situation: '',
   has_job_offer: '',
   current_visa_status: '',
 }
+
+const TEST_NAME_OPTIONS = ['IELTS', 'TEF_Canada', 'CELPIP', 'TCF_Canada', 'other'] as const
+const TEST_NAME_LABELS: Record<string, string> = {
+  IELTS: 'IELTS',
+  TEF_Canada: 'TEF Canada',
+  CELPIP: 'CELPIP',
+  TCF_Canada: 'TCF Canada',
+  other: 'Other',
+}
+const SCORE_HINTS: Record<string, string> = {
+  IELTS: '0–9',
+  TEF_Canada: 'varies',
+  CELPIP: '1–12',
+  TCF_Canada: '0–699',
+  other: 'your score',
+}
+const YEARS_OPTIONS = ['0', '1', '2', '3', '4', '5+'] as const
+const YEARS_LABELS: Record<string, string> = {
+  '0': '< 1 yr',
+  '1': '1 yr',
+  '2': '2 yrs',
+  '3': '3 yrs',
+  '4': '4 yrs',
+  '5+': '5+ yrs',
+}
+const SELF_ASSESSMENT_OPTIONS = ['native', 'fluent', 'intermediate', 'basic'] as const
 
 function readStoredProfile(): Partial<PathwaysProfile> {
   if (typeof window === 'undefined') return {}
@@ -151,6 +195,53 @@ function YesNoToggle({ value, onChange, yesLabel = 'Yes', noLabel = 'No' }: Togg
   )
 }
 
+function ThreeWayToggle({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const options = [
+    { id: 'yes', label: 'Yes' },
+    { id: 'no', label: 'No' },
+    { id: 'planning', label: 'Planning to' },
+  ]
+  return (
+    <div className="flex gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`flex-1 py-2 text-sm rounded-lg border transition-all duration-150 ${
+            value === opt.id
+              ? 'bg-[#534AB7] text-white border-[#534AB7]'
+              : 'bg-[#F9F9F9] text-gray-500 border-[#E5E5E5] hover:border-[#534AB7] hover:text-[#534AB7]'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function YearsSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {YEARS_OPTIONS.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={`px-3 py-1.5 text-sm rounded-lg border transition-all duration-150 ${
+            value === opt
+              ? 'bg-[#534AB7] text-white border-[#534AB7]'
+              : 'bg-[#F9F9F9] text-gray-500 border-[#E5E5E5] hover:border-[#534AB7] hover:text-[#534AB7]'
+          }`}
+        >
+          {YEARS_LABELS[opt]}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function ManualProfileForm() {
@@ -174,6 +265,14 @@ export function ManualProfileForm() {
       timeline: String(stored.timeline ?? ''),
       occupation: String(stored.occupation ?? ''),
       is_employed: stored.is_employed === true ? 'yes' : stored.is_employed === false ? 'no' : '',
+      language_test_taken: stored.language_test?.taken ?? '',
+      language_test_name: stored.language_test?.testName ?? '',
+      language_test_listening: stored.language_test?.scores?.listening?.toString() ?? '',
+      language_test_reading: stored.language_test?.scores?.reading?.toString() ?? '',
+      language_test_writing: stored.language_test?.scores?.writing?.toString() ?? '',
+      language_test_speaking: stored.language_test?.scores?.speaking?.toString() ?? '',
+      language_test_self: stored.language_test?.selfAssessment ?? '',
+      years_of_experience: stored.years_of_experience ?? '',
       education_level: String(stored.education_level ?? ''),
       family_situation: String(stored.family_situation ?? ''),
       has_job_offer: stored.has_job_offer === true ? 'yes' : stored.has_job_offer === false ? 'no' : '',
@@ -192,7 +291,7 @@ export function ManualProfileForm() {
     values.language_ability &&
     values.timeline
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isValid) return
 
@@ -206,9 +305,33 @@ export function ManualProfileForm() {
     }
 
     if (values.date_of_birth) profile.date_of_birth = values.date_of_birth
+
+    if (values.language_test_taken === 'yes') {
+      profile.language_test = {
+        taken: 'yes',
+        ...(values.language_test_name ? { testName: values.language_test_name as 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other' } : {}),
+        ...(values.language_test_listening && values.language_test_reading && values.language_test_writing && values.language_test_speaking
+          ? {
+              scores: {
+                listening: Number(values.language_test_listening),
+                reading: Number(values.language_test_reading),
+                writing: Number(values.language_test_writing),
+                speaking: Number(values.language_test_speaking),
+              },
+            }
+          : {}),
+      }
+    } else if (values.language_test_taken === 'no' || values.language_test_taken === 'planning') {
+      profile.language_test = {
+        taken: values.language_test_taken,
+        ...(values.language_test_self ? { selfAssessment: values.language_test_self as 'native' | 'fluent' | 'intermediate' | 'basic' } : {}),
+      }
+    }
+
     if (values.occupation.trim()) profile.occupation = values.occupation.trim()
     if (values.is_employed === 'yes') profile.is_employed = true
     if (values.is_employed === 'no') profile.is_employed = false
+    if (values.years_of_experience) profile.years_of_experience = values.years_of_experience as '0' | '1' | '2' | '3' | '4' | '5+'
     if (values.education_level) profile.education_level = values.education_level
     if (values.family_situation) profile.family_situation = values.family_situation
     if (values.has_job_offer === 'yes') profile.has_job_offer = true
@@ -217,6 +340,27 @@ export function ManualProfileForm() {
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
     localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
+
+    // Save profile to Supabase so the scoring engine can retrieve it.
+    // Wrapped in try/catch — if the user is not authenticated or the insert fails,
+    // the localStorage save above still preserves the profile for the /results page.
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('profiles').insert({ user_id: user.id, data: profile })
+      }
+    } catch (err) {
+      console.error('Failed to save profile to Supabase:', err)
+    }
+
+    // Trigger pathway scoring (fire-and-forget).
+    // Runs AFTER the profile insert. Does not block navigation if it fails.
+    try {
+      await fetch('/api/recommendations/generate', { method: 'POST' })
+    } catch (err) {
+      console.error('Scoring failed silently:', err)
+    }
 
     setSaved(true)
     setTimeout(() => router.push('/results'), 800)
@@ -269,6 +413,107 @@ export function ManualProfileForm() {
               <SelectInput value={values.language_ability} onChange={set('language_ability')} options={LANGUAGE_OPTIONS} />
             </Field>
 
+            <Field label="Have you taken an official language test?">
+              <ThreeWayToggle value={values.language_test_taken} onChange={set('language_test_taken')} />
+            </Field>
+
+            <AnimatePresence initial={false}>
+              {values.language_test_taken === 'yes' && (
+                <motion.div
+                  key="test-yes"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col gap-4 pt-1 pl-3 border-l-2 border-[#534AB7]/20">
+                    <Field label="Which test?">
+                      <div className="flex flex-wrap gap-2">
+                        {TEST_NAME_OPTIONS.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => set('language_test_name')(opt)}
+                            className={`px-3 py-1.5 text-sm rounded-lg border transition-all duration-150 ${
+                              values.language_test_name === opt
+                                ? 'bg-[#534AB7] text-white border-[#534AB7]'
+                                : 'bg-[#F9F9F9] text-gray-500 border-[#E5E5E5] hover:border-[#534AB7] hover:text-[#534AB7]'
+                            }`}
+                          >
+                            {TEST_NAME_LABELS[opt]}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <AnimatePresence initial={false}>
+                      {values.language_test_name && (
+                        <motion.div
+                          key="scores"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2, ease: 'easeInOut' }}
+                          className="overflow-hidden"
+                        >
+                          <Field label={`Scores${values.language_test_name ? ` (${SCORE_HINTS[values.language_test_name] ?? 'your score'} per section)` : ''}`}>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(['listening', 'reading', 'writing', 'speaking'] as const).map((section) => (
+                                <div key={section} className="flex flex-col gap-1">
+                                  <span className="text-[10px] text-gray-400 capitalize">{section}</span>
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    value={values[`language_test_${section}` as keyof FormValues]}
+                                    onChange={(e) => set(`language_test_${section}` as keyof FormValues)(e.target.value)}
+                                    placeholder="—"
+                                    className={inputClass}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </Field>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+
+              {(values.language_test_taken === 'no' || values.language_test_taken === 'planning') && (
+                <motion.div
+                  key="test-no-planning"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-1 pl-3 border-l-2 border-[#534AB7]/20">
+                    <Field label="How would you describe your level?">
+                      <div className="flex flex-wrap gap-2">
+                        {SELF_ASSESSMENT_OPTIONS.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => set('language_test_self')(opt)}
+                            className={`px-3 py-1.5 text-sm rounded-lg border capitalize transition-all duration-150 ${
+                              values.language_test_self === opt
+                                ? 'bg-[#534AB7] text-white border-[#534AB7]'
+                                : 'bg-[#F9F9F9] text-gray-500 border-[#E5E5E5] hover:border-[#534AB7] hover:text-[#534AB7]'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <Field label="Timeline / urgency" required>
               <SelectInput value={values.timeline} onChange={set('timeline')} options={TIMELINE_OPTIONS} />
             </Field>
@@ -306,6 +551,23 @@ export function ManualProfileForm() {
                     <Field label="Currently employed">
                       <YesNoToggle value={values.is_employed} onChange={set('is_employed')} />
                     </Field>
+
+                    <AnimatePresence initial={false}>
+                      {(values.occupation.trim() || values.is_employed === 'yes') && (
+                        <motion.div
+                          key="years-exp"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25, ease: 'easeInOut' }}
+                          className="overflow-hidden"
+                        >
+                          <Field label="Years of relevant work experience">
+                            <YearsSelector value={values.years_of_experience} onChange={set('years_of_experience')} />
+                          </Field>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     <Field label="Education level">
                       <SelectInput value={values.education_level} onChange={set('education_level')} options={EDUCATION_OPTIONS} />
