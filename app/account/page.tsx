@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Calendar, Mail, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { AccountBackButton } from "@/components/account/AccountBackButton";
 
 export const metadata = {
   title: "Account — Pathways",
@@ -36,108 +37,84 @@ export default async function AccountPage() {
     : "—";
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
-      <nav className="flex-shrink-0 border-b border-[#E5E5E5] bg-white px-6 py-4 md:px-8">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="text-[15px] font-semibold tracking-tight text-[#171717] hover:text-[#534AB7] transition-colors duration-200"
-          >
-            Pathways
-          </Link>
-          <div className="flex items-center gap-5">
-            <Link
-              href="/onboarding"
-              className="text-sm text-[#737373] hover:text-[#171717] transition-colors"
-            >
-              Onboarding
-            </Link>
-            <Link
-              href="/"
-              className="text-sm text-[#737373] hover:text-[#171717] transition-colors"
-            >
-              Home
-            </Link>
+    <div className="fixed inset-0 flex flex-col bg-white">
+      <header className="flex-shrink-0 flex items-center gap-3 border-b border-[#F5F5F5] px-4 py-3 sm:px-6">
+        <AccountBackButton />
+        <h1 className="text-[15px] font-semibold tracking-tight text-[#171717]">
+          Account
+        </h1>
+        <div className="flex-1" />
+        <Link
+          href="/"
+          className="text-[13px] text-[#A3A3A3] hover:text-[#534AB7] transition-colors"
+        >
+          Pathways
+        </Link>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-md">
+          <div className="mb-8 flex flex-col items-center text-center">
+            {avatar ? (
+              <Image
+                src={avatar}
+                alt=""
+                width={72}
+                height={72}
+                unoptimized
+                className="mb-4 h-[72px] w-[72px] rounded-full object-cover ring-2 ring-[#F5F5F5]"
+              />
+            ) : (
+              <div className="mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7]">
+                <User size={32} strokeWidth={1.5} />
+              </div>
+            )}
+            <p className="text-lg font-semibold text-[#171717]">
+              {fullName || "Pathways member"}
+            </p>
+            <p className="mt-0.5 text-sm text-[#737373]">{user.email}</p>
           </div>
-        </div>
-      </nav>
 
-      <main className="flex-1 px-6 py-10 md:py-14">
-        <div className="mx-auto max-w-xl">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#171717] mb-1">
-            Your account
-          </h1>
-          <p className="text-sm text-[#737373] mb-8">
-            Signed in with Pathways. Manage how you access the platform.
-          </p>
-
-          <div className="rounded-[16px] border border-[#E5E5E5] bg-white overflow-hidden shadow-sm mb-6">
-            <div className="border-b border-[#F5F5F5] px-6 py-5 flex items-start gap-4">
-              {avatar ? (
-                <Image
-                  src={avatar}
-                  alt=""
-                  width={56}
-                  height={56}
-                  unoptimized
-                  className="h-14 w-14 rounded-full object-cover ring-2 ring-[#F5F5F5]"
-                />
-              ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7]">
-                  <User size={26} strokeWidth={1.75} />
-                </div>
-              )}
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-lg font-semibold text-[#171717] truncate">
-                  {fullName || "Pathways member"}
+          <div className="space-y-0 rounded-[14px] border border-[#E5E5E5] bg-white divide-y divide-[#F5F5F5] mb-8">
+            <div className="flex items-start gap-3 px-4 py-4">
+              <Mail
+                size={18}
+                className="text-[#A3A3A3] mt-0.5 shrink-0"
+                strokeWidth={1.75}
+              />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3] mb-0.5">
+                  Email
                 </p>
-                <p className="text-sm text-[#737373] truncate">{user.email}</p>
+                <p className="text-sm text-[#171717] break-all">{user.email}</p>
               </div>
             </div>
-
-            <div className="divide-y divide-[#F5F5F5]">
-              <div className="px-6 py-4 flex items-start gap-3">
-                <Mail
-                  size={18}
-                  className="text-[#A3A3A3] mt-0.5 flex-shrink-0"
-                  strokeWidth={1.75}
-                />
-                <div>
-                  <p className="text-xs font-medium text-[#A3A3A3] uppercase tracking-wide mb-0.5">
-                    Email
-                  </p>
-                  <p className="text-sm text-[#171717]">{user.email}</p>
-                </div>
+            <div className="flex items-start gap-3 px-4 py-4">
+              <Calendar
+                size={18}
+                className="text-[#A3A3A3] mt-0.5 shrink-0"
+                strokeWidth={1.75}
+              />
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3] mb-0.5">
+                  Member since
+                </p>
+                <p className="text-sm text-[#171717]">{created}</p>
               </div>
-
-              <div className="px-6 py-4 flex items-start gap-3">
-                <Calendar
-                  size={18}
-                  className="text-[#A3A3A3] mt-0.5 flex-shrink-0"
-                  strokeWidth={1.75}
-                />
-                <div>
-                  <p className="text-xs font-medium text-[#A3A3A3] uppercase tracking-wide mb-0.5">
-                    Member since
-                  </p>
-                  <p className="text-sm text-[#171717]">{created}</p>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 flex items-start gap-3">
-                <User
-                  size={18}
-                  className="text-[#A3A3A3] mt-0.5 flex-shrink-0"
-                  strokeWidth={1.75}
-                />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-[#A3A3A3] uppercase tracking-wide mb-0.5">
-                    User ID
-                  </p>
-                  <p className="text-xs font-mono text-[#525252] break-all">
-                    {user.id}
-                  </p>
-                </div>
+            </div>
+            <div className="flex items-start gap-3 px-4 py-4">
+              <User
+                size={18}
+                className="text-[#A3A3A3] mt-0.5 shrink-0"
+                strokeWidth={1.75}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3] mb-0.5">
+                  User ID
+                </p>
+                <p className="text-xs font-mono text-[#525252] break-all leading-relaxed">
+                  {user.id}
+                </p>
               </div>
             </div>
           </div>
@@ -145,7 +122,7 @@ export default async function AccountPage() {
           <div className="space-y-3">
             <Link
               href="/onboarding"
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#534AB7] py-3 text-sm font-medium text-white hover:bg-[#3C3489] transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#534AB7] py-3.5 text-sm font-medium text-white shadow-lg shadow-[#534AB7]/15 hover:bg-[#3C3489] transition-colors"
             >
               Continue your journey
               <ArrowRight size={16} />
@@ -153,10 +130,9 @@ export default async function AccountPage() {
             <SignOutButton />
           </div>
 
-          <p className="mt-8 text-center text-xs text-[#A3A3A3] leading-relaxed">
-            Immigration profile data you enter in onboarding is stored on this
-            device until you connect cloud features. Account settings may expand
-            as Pathways grows.
+          <p className="mt-10 text-center text-[11px] leading-relaxed text-[#A3A3A3]">
+            Onboarding answers may still be stored on this device until synced to
+            your Pathways profile in the database.
           </p>
         </div>
       </main>
