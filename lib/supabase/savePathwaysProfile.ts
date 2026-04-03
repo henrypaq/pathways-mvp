@@ -28,20 +28,20 @@ export async function savePathwaysProfileToSupabase(
   }
 
   // UPDATE the existing row created by the signup trigger.
-  // Avoids relying on onConflict (which needs a DB-side unique index that may not exist in all envs).
-  const { error: updateError, count } = await supabase
+  // Avoids relying on onConflict (which needs a unique index that may not exist in all envs).
+  const { error: updateError, data: updatedRows } = await supabase
     .from('profiles')
     .update({ data: profile })
     .eq('user_id', user.id)
-    .select('id', { count: 'exact', head: true })
+    .select('id')
 
   if (updateError) {
     console.error('[savePathwaysProfileToSupabase] update error:', updateError.message)
     throw updateError
   }
 
-  // Row didn't exist (e.g. trigger not yet applied) — insert as fallback
-  if (!count || count === 0) {
+  // Row didn't exist (e.g. trigger not applied) — insert as fallback
+  if (!updatedRows || updatedRows.length === 0) {
     const { error: insertError } = await supabase
       .from('profiles')
       .insert({ user_id: user.id, data: profile })
