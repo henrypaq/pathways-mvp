@@ -2,6 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { PathwaysProfile } from '@/types/voice'
 import type { RecommendationsResult } from '@/lib/types'
+import { scoreAllPathways } from '@/lib/scoring/pathwayScorer'
+import { mapProfileToScorer } from '@/lib/scoring/mapProfileToScorer'
+import { scorerToPathwayMatches } from '@/lib/scoring/toPathwayMatch'
 
 /** Netlify/Vercel: allow up to 26s (Netlify Pro max; also set in netlify.toml [functions] timeout). */
 export const maxDuration = 26
@@ -255,14 +258,34 @@ export async function POST(request: Request): Promise<Response> {
     async start(controller) {
       const heartbeat = setInterval(() => controller.enqueue(enc.encode('\n')), 5000)
       try {
-        console.log('[recommendations] stage 1: generating queries')
-        const queries = await generateSearchQueries(profile)
+        // Run deterministic scorer + query generation in parallel (scorer is pure JS, no I/O)
+        console.log('[recommendations] stage 1: generating queries + running deterministic scorer')
+        const [queries, scoring] = await Promise.all([
+          generateSearchQueries(profile),
+          Promise.resolve(scoreAllPathways(mapProfileToScorer(profile as Record<string, unknown>), 'anonymous')),
+        ])
+        const verifiedPathways = scorerToPathwayMatches(scoring)
+        console.log('[recommendations] verified pathways:', verifiedPathways.length, '| queries:', queries.length)
+
         console.log('[recommendations] stage 2: retrieving chunks for', queries.length, 'queries')
         const chunks = await retrieveChunks(queries)
         console.log('[recommendations] stage 3: synthesizing from', chunks.length, 'chunks')
         const result = await synthesizeRecommendations(profile, chunks)
-        console.log('[recommendations] done')
-        controller.enqueue(enc.encode(JSON.stringify(result)))
+
+        // Merge: verified pathways first, then AI pathways that don't duplicate a verified one
+        // Deduplicate by checking if any 7+ char word from Claude's pathway name appears in a verified name
+        const verifiedKeywords = verifiedPathways.flatMap(p =>
+          p.name.toLowerCase().split(/\s+/).filter(w => w.length >= 7)
+        )
+        const aiPathways = result.pathways.filter(p => {
+          const name = p.name.toLowerCase()
+          return !verifiedKeywords.some(kw => name.includes(kw))
+        })
+        const mergedPathways = [...verifiedPathways, ...aiPathways].slice(0, 4)
+        const topPathwayId = mergedPathways[0]?.id ?? result.topPathwayId
+
+        console.log('[recommendations] done — verified:', verifiedPathways.length, 'ai:', aiPathways.length)
+        controller.enqueue(enc.encode(JSON.stringify({ ...result, pathways: mergedPathways, topPathwayId })))
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         console.error('[recommendations] error:', msg)

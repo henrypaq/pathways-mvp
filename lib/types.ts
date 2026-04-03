@@ -91,6 +91,8 @@ export interface PathwayMatch {
   nextStep: string
   officialUrl: string
   sources: SourceCitation[]
+  /** True for pathways scored by the deterministic engine — confirmed legal immigration routes */
+  isVerified?: boolean
 }
 
 export interface RecommendedRoadmapStep {
