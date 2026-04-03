@@ -41,7 +41,6 @@ export interface UseVoiceOnboardingReturn {
   history: ConversationTurn[]
   isComplete: boolean
   errorMessage: string | null
-  /** Manual start — only when orb is idle (e.g. retry after error). */
   startListening: () => void
   stopListening: () => void
   triggerWelcome: () => void
@@ -80,12 +79,10 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const abortRunRef = useRef<AbortController | null>(null)
   const playingAudioRef = useRef<HTMLAudioElement | null>(null)
-  const listenRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const runTurnRef = useRef<(transcript: string) => Promise<void>>(
     undefined as unknown as (transcript: string) => Promise<void>,
   )
-  const beginListeningRef = useRef<() => void>(() => {})
 
   useLayoutEffect(() => {
     orbStateRef.current = orbState
@@ -100,13 +97,6 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   useLayoutEffect(() => {
     isCompleteRef.current = isComplete
   }, [isComplete])
-
-  const clearListenRetry = useCallback(() => {
-    if (listenRetryTimeoutRef.current !== null) {
-      clearTimeout(listenRetryTimeoutRef.current)
-      listenRetryTimeoutRef.current = null
-    }
-  }, [])
 
   const stopPlaybackAndTts = useCallback(() => {
     abortRunRef.current?.abort()
@@ -178,96 +168,6 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     setHistory(turns)
     persistVoiceHistory(turns)
   }, [])
-
-  const scheduleResumeListen = useCallback(() => {
-    clearListenRetry()
-    listenRetryTimeoutRef.current = setTimeout(() => {
-      listenRetryTimeoutRef.current = null
-      if (!mountedRef.current || isCompleteRef.current) return
-      beginListeningRef.current?.()
-    }, 200)
-  }, [clearListenRetry])
-
-  const beginListening = useCallback(() => {
-    if (!mountedRef.current || isCompleteRef.current) return
-    const Ctor = getSpeechRecognitionCtor()
-    if (!Ctor) {
-      console.error('[voice] SpeechRecognition not supported in this browser')
-      return
-    }
-
-    clearListenRetry()
-
-    try {
-      recognitionRef.current?.stop()
-    } catch {
-      /* ignore */
-    }
-    recognitionRef.current = null
-
-    setOrbTracked('listening')
-    setErrorMessage(null)
-
-    const recognition = new Ctor()
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-    recognition.maxAlternatives = 1
-
-    let gotResult = false
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      gotResult = true
-      const transcript = event.results[0][0].transcript.trim()
-      console.log('[voice] transcript:', transcript)
-      if (transcript.length > 0) {
-        void runTurnRef.current?.(transcript)
-      } else {
-        if (!mountedRef.current || isCompleteRef.current) return
-        setOrbTracked('idle')
-        scheduleResumeListen()
-      }
-    }
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('[voice] recognition error:', event.error)
-      if (event.error === 'aborted') return
-      if (event.error === 'not-allowed') {
-        setErrorMessage('Microphone access is required for voice mode')
-        setOrbTracked('idle')
-        return
-      }
-      if (event.error === 'no-speech' || event.error === 'audio-capture') {
-        if (!mountedRef.current || isCompleteRef.current) return
-        setOrbTracked('idle')
-        scheduleResumeListen()
-        return
-      }
-      setErrorMessage("Couldn't hear that — listening again")
-      setOrbTracked('idle')
-      scheduleResumeListen()
-    }
-
-    recognition.onend = () => {
-      if (gotResult) return
-      if (orbStateRef.current === 'listening') setOrbTracked('idle')
-      if (!mountedRef.current || isCompleteRef.current) return
-      scheduleResumeListen()
-    }
-
-    recognitionRef.current = recognition
-    try {
-      recognition.start()
-    } catch (e) {
-      console.error('[voice] recognition.start failed:', e)
-      setOrbTracked('idle')
-      scheduleResumeListen()
-    }
-  }, [clearListenRetry, scheduleResumeListen, setOrbTracked])
-
-  useLayoutEffect(() => {
-    beginListeningRef.current = beginListening
-  }, [beginListening])
 
   const runTurn = async (transcript: string): Promise<void> => {
     console.log('[voice] runTurn called with:', transcript)
@@ -350,7 +250,6 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
           /* ignore */
         }
 
-        // Save profile to Supabase then trigger scoring (fire-and-forget, same as ManualProfileForm)
         void (async () => {
           try {
             await savePathwaysProfileToSupabase(profileRef.current)
@@ -386,7 +285,6 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       if (cleanText.length === 0) {
         console.warn('[voice] empty clean text, skipping TTS')
         setOrbTracked('idle')
-        if (!completedNow) scheduleResumeListen()
         return
       }
 
@@ -425,7 +323,6 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
 
       console.log('[voice] turn complete')
       setOrbTracked('idle')
-      if (!completedNow) scheduleResumeListen()
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       if (!mountedRef.current) return
@@ -441,13 +338,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     if (hasWelcomed.current) return
     hasWelcomed.current = true
     if (historyRef.current.length > 0) {
-      console.log('[voice] restored voice session from storage')
-      if (!isCompleteRef.current) {
-        setTimeout(() => {
-          if (!mountedRef.current) return
-          beginListeningRef.current?.()
-        }, 400)
-      }
+      console.log('[voice] restored voice session from storage — tap the orb to continue')
       return
     }
     console.log('[voice] triggering welcome')
@@ -458,12 +349,73 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   }, [])
 
   const startListening = useCallback(() => {
+    if (!mountedRef.current || isCompleteRef.current) return
+    const Ctor = getSpeechRecognitionCtor()
+    if (!Ctor) {
+      console.error('[voice] SpeechRecognition not supported in this browser')
+      return
+    }
+
     if (orbStateRef.current !== 'idle') return
-    beginListening()
-  }, [beginListening])
+
+    console.log('[voice] starting recognition')
+    try {
+      recognitionRef.current?.stop()
+    } catch {
+      /* ignore */
+    }
+    recognitionRef.current = null
+
+    setOrbTracked('listening')
+    setErrorMessage(null)
+
+    const recognition = new Ctor()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+    recognition.maxAlternatives = 1
+
+    let gotResult = false
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      gotResult = true
+      const transcript = event.results[0][0].transcript.trim()
+      console.log('[voice] transcript:', transcript)
+      if (transcript.length > 0) {
+        void runTurnRef.current?.(transcript)
+      } else {
+        setOrbTracked('idle')
+      }
+    }
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('[voice] recognition error:', event.error)
+      if (event.error === 'aborted') return
+      if (event.error === 'not-allowed') {
+        setErrorMessage('Microphone access is required for voice mode')
+        setOrbTracked('idle')
+        return
+      }
+      setErrorMessage("Couldn't hear that, please try again")
+      setOrbTracked('idle')
+    }
+
+    recognition.onend = () => {
+      console.log('[voice] recognition ended')
+      if (gotResult) return
+      if (orbStateRef.current === 'listening') setOrbTracked('idle')
+    }
+
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+    } catch (e) {
+      console.error('[voice] recognition.start failed:', e)
+      setOrbTracked('idle')
+    }
+  }, [setOrbTracked])
 
   const stopListening = useCallback(() => {
-    clearListenRetry()
     try {
       recognitionRef.current?.stop()
     } catch {
@@ -471,13 +423,12 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     }
     recognitionRef.current = null
     setOrbTracked('idle')
-  }, [clearListenRetry, setOrbTracked])
+  }, [setOrbTracked])
 
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      clearListenRetry()
       stopPlaybackAndTts()
       try {
         recognitionRef.current?.stop()
@@ -486,7 +437,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       }
       recognitionRef.current = null
     }
-  }, [clearListenRetry, stopPlaybackAndTts])
+  }, [stopPlaybackAndTts])
 
   const requiredFieldsRemaining = REQUIRED_PROFILE_FIELDS.filter((f) => !profile[f])
 

@@ -27,7 +27,7 @@ const ORB_GLOW_FILTER: Record<OrbState, string> = {
 };
 
 const DEFAULT_ORB_STATUS_LABEL: Record<OrbState, string> = {
-  idle:      "Your turn",
+  idle:      "Tap to speak",
   listening: "Listening...",
   thinking:  "Thinking...",
   speaking:  "Pathways",
