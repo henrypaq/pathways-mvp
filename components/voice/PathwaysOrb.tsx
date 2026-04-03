@@ -26,8 +26,8 @@ const ORB_GLOW_FILTER: Record<OrbState, string> = {
   speaking:  "drop-shadow(0 0 48px rgba(83, 74, 183, 0.65))",
 };
 
-const ORB_STATUS_LABEL: Record<OrbState, string> = {
-  idle:      "Tap to speak",
+const DEFAULT_ORB_STATUS_LABEL: Record<OrbState, string> = {
+  idle:      "Your turn",
   listening: "Listening...",
   thinking:  "Thinking...",
   speaking:  "Pathways",
@@ -46,9 +46,12 @@ interface PathwaysOrbProps {
   onTap?: () => void;
   /** CSS size string, e.g. "220px" */
   size?: string;
+  /** Override status line under the orb (e.g. first visit vs ongoing conversation). */
+  statusLabels?: Partial<Record<OrbState, string>>;
 }
 
-export function PathwaysOrb({ state, onTap, size = "220px" }: PathwaysOrbProps) {
+export function PathwaysOrb({ state, onTap, size = "220px", statusLabels }: PathwaysOrbProps) {
+  const label = statusLabels?.[state] ?? DEFAULT_ORB_STATUS_LABEL[state];
   const targetDuration = ORB_ANIMATION_DURATION[state];
 
   // Fix 1 — Spring-interpolated animationDuration so speed ramps, never snaps
@@ -156,7 +159,7 @@ export function PathwaysOrb({ state, onTap, size = "220px" }: PathwaysOrbProps) 
             className="text-xs font-semibold tracking-widest uppercase text-center"
             style={{ color: "#A3A3A3", letterSpacing: "0.15em" }}
           >
-            {ORB_STATUS_LABEL[state]}
+            {label}
           </motion.p>
         </AnimatePresence>
       </div>

@@ -20,7 +20,6 @@ function VoiceMode() {
     startListening,
     stopListening,
     triggerWelcome,
-    requiredFieldsRemaining,
   } = useVoiceOnboarding();
   const router = useRouter();
 
@@ -126,10 +125,17 @@ function VoiceMode() {
           </p>
         )}
 
-        {/* Hint before any interaction */}
-        {isSpeechSupported && requiredFieldsRemaining.length === 6 && orbState === "idle" && !errorMessage && (
-          <p style={{ fontSize: "12px", color: "#525252", textAlign: "center" }}>
-            Tap the orb to begin
+        {isSpeechSupported && !isComplete && (
+          <p
+            style={{
+              fontSize: "12px",
+              color: "#525252",
+              textAlign: "center",
+              maxWidth: "320px",
+            }}
+          >
+            Pathways speaks, then the mic opens automatically. Tap the orb while
+            listening to pause.
           </p>
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react'
 import type { OrbState, PathwaysProfile, ConversationTurn } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
 import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
@@ -8,26 +8,31 @@ import { createClient } from '@/lib/supabase/client'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
+const VOICE_HISTORY_KEY = 'pathways_voice_onboarding_history'
 
-const playAudio = async (response: Response): Promise<void> => {
-  return new Promise(async (resolve) => {
-    try {
-      const buffer = await response.arrayBuffer()
-      if (buffer.byteLength === 0) {
-        console.warn('[voice] empty audio, skipping')
-        resolve()
-        return
-      }
-      const blob = new Blob([buffer], { type: 'audio/mpeg' })
-      const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audio.onended = () => { URL.revokeObjectURL(url); resolve() }
-      audio.onerror = () => { URL.revokeObjectURL(url); resolve() }
-      audio.play().catch(() => resolve())
-    } catch {
-      resolve()
-    }
-  })
+function readOnboardingDone(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(ONBOARDING_DONE_KEY) === 'true'
+}
+
+function loadVoiceHistory(): ConversationTurn[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = sessionStorage.getItem(VOICE_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed as ConversationTurn[]) : []
+  } catch {
+    return []
+  }
+}
+
+function persistVoiceHistory(turns: ConversationTurn[]) {
+  try {
+    sessionStorage.setItem(VOICE_HISTORY_KEY, JSON.stringify(turns))
+  } catch {
+    /* ignore quota */
+  }
 }
 
 export interface UseVoiceOnboardingReturn {
@@ -36,6 +41,7 @@ export interface UseVoiceOnboardingReturn {
   history: ConversationTurn[]
   isComplete: boolean
   errorMessage: string | null
+  /** Manual start — only when orb is idle (e.g. retry after error). */
   startListening: () => void
   stopListening: () => void
   triggerWelcome: () => void
@@ -43,7 +49,16 @@ export interface UseVoiceOnboardingReturn {
 }
 
 export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
+  const mountedRef = useRef(true)
+  const initialHistory = loadVoiceHistory()
+
   const [orbState, setOrbState] = useState<OrbState>('idle')
+  const orbStateRef = useRef<OrbState>('idle')
+  const setOrbTracked = useCallback((next: OrbState) => {
+    orbStateRef.current = next
+    setOrbState(next)
+  }, [])
+
   const [profile, setProfile] = useState<Partial<PathwaysProfile>>(() => {
     if (typeof window === 'undefined') return {}
     try {
@@ -53,42 +68,230 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       return {}
     }
   })
-  const [history, setHistory] = useState<ConversationTurn[]>([])
-  const [isComplete, setIsComplete] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(ONBOARDING_DONE_KEY) === 'true'
-  })
+  const [history, setHistory] = useState<ConversationTurn[]>(initialHistory)
+  const [isComplete, setIsComplete] = useState<boolean>(readOnboardingDone)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Refs that mirror state — always current, no stale closure
-  const historyRef = useRef<ConversationTurn[]>([])
+  const historyRef = useRef<ConversationTurn[]>(initialHistory)
   const profileRef = useRef<Partial<PathwaysProfile>>({})
-  useEffect(() => { historyRef.current = history }, [history])
-  useEffect(() => { profileRef.current = profile }, [profile])
-
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const isCompleteRef = useRef(readOnboardingDone())
   const hasWelcomed = useRef(false)
 
-  // runTurn stored in ref to avoid stale closures
-  const runTurnRef = useRef<(transcript: string) => Promise<void>>(undefined as unknown as (transcript: string) => Promise<void>)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const abortRunRef = useRef<AbortController | null>(null)
+  const playingAudioRef = useRef<HTMLAudioElement | null>(null)
+  const listenRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const runTurnRef = useRef<(transcript: string) => Promise<void>>(
+    undefined as unknown as (transcript: string) => Promise<void>,
+  )
+  const beginListeningRef = useRef<() => void>(() => {})
+
+  useLayoutEffect(() => {
+    orbStateRef.current = orbState
+  }, [orbState])
+
+  useEffect(() => {
+    historyRef.current = history
+  }, [history])
+  useEffect(() => {
+    profileRef.current = profile
+  }, [profile])
+  useLayoutEffect(() => {
+    isCompleteRef.current = isComplete
+  }, [isComplete])
+
+  const clearListenRetry = useCallback(() => {
+    if (listenRetryTimeoutRef.current !== null) {
+      clearTimeout(listenRetryTimeoutRef.current)
+      listenRetryTimeoutRef.current = null
+    }
+  }, [])
+
+  const stopPlaybackAndTts = useCallback(() => {
+    abortRunRef.current?.abort()
+    abortRunRef.current = null
+    if (playingAudioRef.current) {
+      try {
+        playingAudioRef.current.pause()
+        playingAudioRef.current.src = ''
+      } catch {
+        /* ignore */
+      }
+      playingAudioRef.current = null
+    }
+  }, [])
+
+  const playAudioResponse = useCallback(
+    async (response: Response, signal: AbortSignal): Promise<void> => {
+      return new Promise((resolve) => {
+        let settled = false
+        const finish = () => {
+          if (settled) return
+          settled = true
+          resolve()
+        }
+        if (!mountedRef.current || signal.aborted) {
+          finish()
+          return
+        }
+        void (async () => {
+          try {
+            const buffer = await response.arrayBuffer()
+            if (!mountedRef.current || signal.aborted) {
+              finish()
+              return
+            }
+            if (buffer.byteLength === 0) {
+              console.warn('[voice] empty audio, skipping')
+              finish()
+              return
+            }
+            const blob = new Blob([buffer], { type: 'audio/mpeg' })
+            const url = URL.createObjectURL(blob)
+            const audio = new Audio(url)
+            playingAudioRef.current = audio
+            const cleanup = () => {
+              URL.revokeObjectURL(url)
+              if (playingAudioRef.current === audio) playingAudioRef.current = null
+              finish()
+            }
+            audio.onended = cleanup
+            audio.onerror = cleanup
+            const onAbort = () => {
+              audio.pause()
+              cleanup()
+            }
+            signal.addEventListener('abort', onAbort, { once: true })
+            audio.play().catch(cleanup)
+          } catch {
+            finish()
+          }
+        })()
+      })
+    },
+    [],
+  )
+
+  const commitHistory = useCallback((turns: ConversationTurn[]) => {
+    historyRef.current = turns
+    setHistory(turns)
+    persistVoiceHistory(turns)
+  }, [])
+
+  const scheduleResumeListen = useCallback(() => {
+    clearListenRetry()
+    listenRetryTimeoutRef.current = setTimeout(() => {
+      listenRetryTimeoutRef.current = null
+      if (!mountedRef.current || isCompleteRef.current) return
+      beginListeningRef.current?.()
+    }, 200)
+  }, [clearListenRetry])
+
+  const beginListening = useCallback(() => {
+    if (!mountedRef.current || isCompleteRef.current) return
+    const Ctor = getSpeechRecognitionCtor()
+    if (!Ctor) {
+      console.error('[voice] SpeechRecognition not supported in this browser')
+      return
+    }
+
+    clearListenRetry()
+
+    try {
+      recognitionRef.current?.stop()
+    } catch {
+      /* ignore */
+    }
+    recognitionRef.current = null
+
+    setOrbTracked('listening')
+    setErrorMessage(null)
+
+    const recognition = new Ctor()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+    recognition.maxAlternatives = 1
+
+    let gotResult = false
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      gotResult = true
+      const transcript = event.results[0][0].transcript.trim()
+      console.log('[voice] transcript:', transcript)
+      if (transcript.length > 0) {
+        void runTurnRef.current?.(transcript)
+      } else {
+        if (!mountedRef.current || isCompleteRef.current) return
+        setOrbTracked('idle')
+        scheduleResumeListen()
+      }
+    }
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('[voice] recognition error:', event.error)
+      if (event.error === 'aborted') return
+      if (event.error === 'not-allowed') {
+        setErrorMessage('Microphone access is required for voice mode')
+        setOrbTracked('idle')
+        return
+      }
+      if (event.error === 'no-speech' || event.error === 'audio-capture') {
+        if (!mountedRef.current || isCompleteRef.current) return
+        setOrbTracked('idle')
+        scheduleResumeListen()
+        return
+      }
+      setErrorMessage("Couldn't hear that — listening again")
+      setOrbTracked('idle')
+      scheduleResumeListen()
+    }
+
+    recognition.onend = () => {
+      if (gotResult) return
+      if (orbStateRef.current === 'listening') setOrbTracked('idle')
+      if (!mountedRef.current || isCompleteRef.current) return
+      scheduleResumeListen()
+    }
+
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+    } catch (e) {
+      console.error('[voice] recognition.start failed:', e)
+      setOrbTracked('idle')
+      scheduleResumeListen()
+    }
+  }, [clearListenRetry, scheduleResumeListen, setOrbTracked])
+
+  useLayoutEffect(() => {
+    beginListeningRef.current = beginListening
+  }, [beginListening])
 
   const runTurn = async (transcript: string): Promise<void> => {
     console.log('[voice] runTurn called with:', transcript)
+    abortRunRef.current?.abort()
+    const ac = new AbortController()
+    abortRunRef.current = ac
+
     try {
-      setOrbState('thinking')
+      setOrbTracked('thinking')
       setErrorMessage(null)
 
-      // ── 1. CHAT ───────────────────────────────────────────────────────
       console.log('[voice] sending chat request')
       const chatRes = await fetch('/api/voice/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: ac.signal,
         body: JSON.stringify({
           transcript,
           history: historyRef.current,
           profile: profileRef.current,
         }),
       })
+
+      if (!mountedRef.current) return
 
       if (!chatRes.ok) {
         throw new Error(`chat_failed: ${chatRes.status}`)
@@ -97,13 +300,16 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         throw new Error('no_stream_body')
       }
 
-      // ── 2. READ STREAM ────────────────────────────────────────────────
       console.log('[voice] reading stream')
       const reader = chatRes.body.getReader()
       const decoder = new TextDecoder()
       let fullText = ''
 
       while (true) {
+        if (ac.signal.aborted || !mountedRef.current) {
+          await reader.cancel().catch(() => {})
+          return
+        }
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value, { stream: true })
@@ -111,9 +317,10 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         console.log('[voice] chunk received:', chunk)
       }
 
+      if (!mountedRef.current || ac.signal.aborted) return
+
       console.log('[voice] stream complete, fullText:', fullText)
 
-      // ── 3. PARSE PROFILE DELTA ────────────────────────────────────────
       const deltaMatches = [...fullText.matchAll(/PROFILE_DELTA:(\{[^}]*\})/g)]
       for (const match of deltaMatches) {
         try {
@@ -130,11 +337,18 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         }
       }
 
-      // ── 4. CHECK COMPLETION ───────────────────────────────────────────
+      let completedNow = false
       if (fullText.includes('ONBOARDING_COMPLETE')) {
         console.log('[voice] onboarding complete')
+        completedNow = true
+        isCompleteRef.current = true
         setIsComplete(true)
         localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
+        try {
+          sessionStorage.removeItem(VOICE_HISTORY_KEY)
+        } catch {
+          /* ignore */
+        }
 
         // Save profile to Supabase then trigger scoring (fire-and-forget, same as ManualProfileForm)
         void (async () => {
@@ -155,7 +369,6 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         })()
       }
 
-      // ── 5. CLEAN TEXT FOR TTS ─────────────────────────────────────────
       const cleanText = fullText
         .replace(/PROFILE_DELTA:\{[^}]*\}/g, '')
         .replace(/ONBOARDING_COMPLETE/g, '')
@@ -164,117 +377,120 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
 
       console.log('[voice] clean text for TTS:', cleanText)
 
-      // ── 6. UPDATE HISTORY ─────────────────────────────────────────────
       const assistantEntry: ConversationTurn = { role: 'assistant', content: cleanText }
       const updatedHistory =
         transcript === '__INIT__'
           ? [...historyRef.current, assistantEntry]
           : [...historyRef.current, { role: 'user' as const, content: transcript }, assistantEntry]
 
-      historyRef.current = updatedHistory
-      setHistory(updatedHistory)
+      commitHistory(updatedHistory)
 
-      // ── 7. SPEAK ──────────────────────────────────────────────────────
+      if (!mountedRef.current || ac.signal.aborted) return
+
       if (cleanText.length === 0) {
         console.warn('[voice] empty clean text, skipping TTS')
-        setOrbState('idle')
+        setOrbTracked('idle')
+        if (!completedNow) scheduleResumeListen()
         return
       }
 
-      const sentences = cleanText
+      let sentences = cleanText
         .split(/(?<=[.!?])\s+/)
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 2)
+      if (sentences.length === 0) sentences = [cleanText]
 
       console.log('[voice] sentences:', sentences)
-      setOrbState('speaking')
+      setOrbTracked('speaking')
 
       for (const sentence of sentences) {
+        if (!mountedRef.current || ac.signal.aborted) break
         console.log('[voice] speaking:', sentence)
         try {
           const speakRes = await fetch('/api/voice/speak', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: ac.signal,
             body: JSON.stringify({ text: sentence }),
           })
           if (!speakRes.ok) {
             console.error('[voice] speak error:', speakRes.status)
             continue
           }
-          await playAudio(speakRes)
+          await playAudioResponse(speakRes, ac.signal)
           console.log('[voice] sentence done')
         } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') break
           console.error('[voice] speak threw:', err)
         }
       }
 
+      if (!mountedRef.current || ac.signal.aborted) return
+
       console.log('[voice] turn complete')
-      setOrbState('idle')
+      setOrbTracked('idle')
+      if (!completedNow) scheduleResumeListen()
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (!mountedRef.current) return
       console.error('[voice] runTurn error:', err)
       setErrorMessage('Something went wrong, tap to retry')
-      setOrbState('idle')
+      setOrbTracked('idle')
     }
   }
 
-  // Keep ref current so triggerWelcome and startListening never hold a stale copy
-  useEffect(() => { runTurnRef.current = runTurn })
+  runTurnRef.current = runTurn
 
   const triggerWelcome = useCallback(() => {
     if (hasWelcomed.current) return
     hasWelcomed.current = true
+    if (historyRef.current.length > 0) {
+      console.log('[voice] restored voice session from storage')
+      if (!isCompleteRef.current) {
+        setTimeout(() => {
+          if (!mountedRef.current) return
+          beginListeningRef.current?.()
+        }, 400)
+      }
+      return
+    }
     console.log('[voice] triggering welcome')
-    setTimeout(() => runTurnRef.current?.('__INIT__'), 300)
+    setTimeout(() => {
+      if (!mountedRef.current) return
+      void runTurnRef.current?.('__INIT__')
+    }, 300)
   }, [])
 
   const startListening = useCallback(() => {
-    const Ctor = getSpeechRecognitionCtor()
-    if (!Ctor) {
-      console.error('[voice] SpeechRecognition not supported in this browser')
-      return
-    }
-
-    if (orbState !== 'idle') return
-
-    console.log('[voice] starting recognition')
-    setOrbState('listening')
-    setErrorMessage(null)
-
-    const recognition = new Ctor()
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-    recognition.maxAlternatives = 1
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript.trim()
-      console.log('[voice] transcript:', transcript)
-      if (transcript.length > 0) {
-        runTurnRef.current?.(transcript)
-      } else {
-        setOrbState('idle')
-      }
-    }
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('[voice] recognition error:', event.error)
-      setErrorMessage("Couldn't hear that, please try again")
-      setOrbState('idle')
-    }
-
-    recognition.onend = () => {
-      console.log('[voice] recognition ended')
-      setOrbState(prev => prev === 'listening' ? 'idle' : prev)
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-  }, [orbState])
+    if (orbStateRef.current !== 'idle') return
+    beginListening()
+  }, [beginListening])
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop()
+    clearListenRetry()
+    try {
+      recognitionRef.current?.stop()
+    } catch {
+      /* ignore */
+    }
     recognitionRef.current = null
-  }, [])
+    setOrbTracked('idle')
+  }, [clearListenRetry, setOrbTracked])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      clearListenRetry()
+      stopPlaybackAndTts()
+      try {
+        recognitionRef.current?.stop()
+      } catch {
+        /* ignore */
+      }
+      recognitionRef.current = null
+    }
+  }, [clearListenRetry, stopPlaybackAndTts])
 
   const requiredFieldsRemaining = REQUIRED_PROFILE_FIELDS.filter((f) => !profile[f])
 
