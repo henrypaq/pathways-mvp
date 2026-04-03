@@ -1,53 +1,33 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
 import type { PathwaysProfile } from '@/types/voice'
 
-let warnedMissingSession = false
-
 /**
- * Persist onboarding profile for the signed-in user. Uses upsert because
- * public.profiles already has one row per user (trigger on auth.users).
+ * Persist onboarding profile for the signed-in user.
+ *
+ * Calls the server-side /api/profile/save route which:
+ * - Reads the Supabase session from cookies (more reliable than browser client)
+ * - Uses service role key to bypass RLS/grant issues
+ *
  * Call after each turn with new PROFILE_DELTA data (incremental) and again at completion.
+ * Silently no-ops (logs warning) if not authenticated.
  */
 export async function savePathwaysProfileToSupabase(
   profile: Partial<PathwaysProfile>,
 ): Promise<void> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    if (process.env.NODE_ENV === 'development' && !warnedMissingSession) {
-      warnedMissingSession = true
-      console.warn(
-        '[savePathwaysProfileToSupabase] Skipped: no Supabase session. Sign in to persist profile to the database.',
-      )
-    }
+  const res = await fetch('/api/profile/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profile }),
+  })
+
+  if (res.status === 401) {
+    console.warn('[savePathwaysProfileToSupabase] Skipped: not authenticated. Sign in to persist profile to the database.')
     return
   }
 
-  // UPDATE the existing row created by the signup trigger.
-  // Avoids relying on onConflict (which needs a unique index that may not exist in all envs).
-  const { error: updateError, data: updatedRows } = await supabase
-    .from('profiles')
-    .update({ data: profile })
-    .eq('user_id', user.id)
-    .select('id')
-
-  if (updateError) {
-    console.error('[savePathwaysProfileToSupabase] update error:', updateError.message)
-    throw updateError
-  }
-
-  // Row didn't exist (e.g. trigger not applied) — insert as fallback
-  if (!updatedRows || updatedRows.length === 0) {
-    const { error: insertError } = await supabase
-      .from('profiles')
-      .insert({ user_id: user.id, data: profile })
-    if (insertError) {
-      console.error('[savePathwaysProfileToSupabase] insert error:', insertError.message)
-      throw insertError
-    }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? `Profile save failed: ${res.status}`)
   }
 }

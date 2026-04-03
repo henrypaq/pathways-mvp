@@ -8,19 +8,22 @@ export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-/** Supabase client for server-side RPC — anon key is sufficient because
- *  match_knowledge_chunks is granted to anon (migration 20260403160000). */
+/** Supabase client for server-side RPC.
+ *  Uses the service role key (preferred) so no anon grant migration is required.
+ *  Falls back to anon key if service role is not configured. */
 function getSupabaseClient() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL ??
     process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL ??
     ''
+  // Prefer service role key for server-side routes (bypasses RLS/grants)
   const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
     process.env.SUPABASE_ANON_KEY ??
     ''
-  if (!url || !key) throw new Error('Supabase URL or anon key not configured')
+  if (!url || !key) throw new Error('Supabase URL or key not configured')
   return createClient(url, key)
 }
 
