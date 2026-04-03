@@ -1,13 +1,39 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
 import type { PathwaysProfile } from '@/types/voice'
 import type { RecommendationsResult, PathwayMatch, RecommendedRoadmapStep, SourceCitation } from '@/lib/types'
 
-/** Netlify/Vercel: allow long enough for Claude + parallel vector search (no per-search Claude when API supports include_answer). */
+/** Netlify/Vercel: allow long enough for Claude + parallel vector search. */
 export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-/** FastAPI base URL (no trailing slash). Used for POST /search → Supabase pgvector RAG. */
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
+
+/** Supabase client for server-side RPC calls (no user session needed — anon key is sufficient
+ *  because match_knowledge_chunks is now granted to anon). */
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL ?? ''
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    ''
+  if (!url || !key) throw new Error('Supabase URL or anon key not configured')
+  return createClient(url, key)
+}
+
+/** Embed a single query using OpenAI text-embedding-3-small. */
+async function embedQuery(text: string): Promise<number[]> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
+  const res = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ input: text, model: 'text-embedding-3-small' }),
+  })
+  if (!res.ok) throw new Error(`OpenAI embeddings error: ${res.status}`)
+  const data = await res.json() as { data: { embedding: number[] }[] }
+  return data.data[0].embedding
+}
 
 // Step 1 — Ask Claude to generate targeted search queries from the profile
 async function generateSearchQueries(profile: Partial<PathwaysProfile>): Promise<string[]> {
@@ -64,85 +90,51 @@ type SearchHit = {
   scraped_at: string | null
 }
 
-// Step 2 — Retrieve chunks from FastAPI /search (OpenAI query embed + Supabase pgvector by default)
+// Step 2 — Embed each query and search Supabase pgvector directly (no FastAPI dependency)
 async function retrieveChunks(queries: string[]): Promise<SearchHit[]> {
-  const searchUrl = `${BASE_URL}/search`
-  const errors: string[] = []
+  const supabase = getSupabaseClient()
 
   const perQuery = await Promise.all(
     queries.map(async (q) => {
       try {
-        const res = await fetch(searchUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: q,
-            n_results: 4,
-            include_answer: false,
-          }),
+        const embedding = await embedQuery(q)
+        const { data, error } = await supabase.rpc('match_knowledge_chunks', {
+          query_embedding: embedding,
+          match_count: 4,
         })
-        const raw = await res.text()
-        let data: unknown
-        try {
-          data = JSON.parse(raw)
-        } catch {
-          errors.push(`POST /search: non-JSON body (HTTP ${res.status})`)
+        if (error) {
+          console.error('[retrieveChunks] rpc error:', error.message)
           return [] as SearchHit[]
         }
-        const body = data as {
-          results?: unknown
-          detail?: unknown
-          error?: unknown
-        }
-        if (!res.ok) {
-          const detail =
-            typeof body.detail === 'string'
-              ? body.detail
-              : body.detail != null
-                ? JSON.stringify(body.detail)
-                : body.error != null
-                  ? String(body.error)
-                  : raw.slice(0, 240)
-          errors.push(`POST /search HTTP ${res.status}: ${detail}`)
-          return [] as SearchHit[]
-        }
-        if (!Array.isArray(body.results)) {
-          errors.push('POST /search: response missing results[] (expected SearchResponse)')
-          return [] as SearchHit[]
-        }
-        return body.results as SearchHit[]
+        return (data as { content: string; url: string; title: string | null; similarity: number; scraped_at: string | null }[]).map(
+          (row) => ({
+            document: row.content,
+            url: row.url,
+            display_name: row.title ?? row.url,
+            similarity: row.similarity,
+            scraped_at: row.scraped_at,
+          })
+        )
       } catch (e) {
-        errors.push(e instanceof Error ? e.message : 'fetch failed')
+        console.error('[retrieveChunks] query failed:', e instanceof Error ? e.message : e)
         return [] as SearchHit[]
       }
     }),
   )
 
-  const all: SearchHit[] = []
-  const seenUrls = new Set<string>()
-
-  for (const rows of perQuery) {
-    for (const chunk of rows) {
-      if (!chunk?.url || seenUrls.has(chunk.url)) continue
-      seenUrls.add(chunk.url)
-      all.push({
-        document: chunk.document ?? '',
-        url: chunk.url,
-        display_name: chunk.display_name ?? '',
-        similarity: typeof chunk.similarity === 'number' ? chunk.similarity : 0,
-        scraped_at: chunk.scraped_at ?? null,
-      })
-    }
+  // Sort by similarity first, then deduplicate by URL so the best chunk per URL wins
+  const all = perQuery.flat().sort((a, b) => b.similarity - a.similarity)
+  const seen = new Set<string>()
+  const deduped: SearchHit[] = []
+  for (const hit of all) {
+    if (!hit.url || seen.has(hit.url)) continue
+    seen.add(hit.url)
+    deduped.push(hit)
+    if (deduped.length >= 15) break
   }
 
-  const deduped = all.sort((a, b) => b.similarity - a.similarity).slice(0, 15)
-
-  if (deduped.length === 0 && queries.length > 0) {
-    const hint =
-      errors.length > 0
-        ? errors.slice(0, 4).join(' | ')
-        : `Check NEXT_PUBLIC_API_URL (${BASE_URL}), Python API is running, OPENAI_API_KEY + SUPABASE_DB_URL on the API, and knowledge_chunks has rows.`
-    throw new Error(`Vector search returned no results. ${hint}`)
+  if (deduped.length === 0) {
+    throw new Error('Vector search returned no results. Check OPENAI_API_KEY and NEXT_PUBLIC_SUPABASE_URL are set, and knowledge_chunks has rows.')
   }
 
   return deduped
