@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import type { PathwaysProfile } from '@/types/voice'
 import type { RecommendationsResult } from '@/lib/types'
 
-/** Netlify/Vercel: allow long enough for Claude + parallel vector search. */
-export const maxDuration = 60
+/** Netlify/Vercel: allow up to 26s (Netlify Pro max; also set in netlify.toml [functions] timeout). */
+export const maxDuration = 26
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -16,7 +16,6 @@ function getSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL ??
     process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL ??
     ''
-  // Prefer secret/service role key for server-side routes (bypasses RLS/grants)
   const key =
     process.env.SUPABASE_SECRET_KEY ??
     process.env.SUPABASE_SERVICE_ROLE_KEY ??
@@ -42,7 +41,7 @@ async function embedQuery(text: string): Promise<number[]> {
   return data.data[0].embedding
 }
 
-// Step 1 — Use Haiku (fast) to generate targeted search queries from the profile
+// Step 1 — Use Haiku (fast, ~1-2s) to generate targeted search queries
 async function generateSearchQueries(profile: Partial<PathwaysProfile>): Promise<string[]> {
   const profileText = Object.entries(profile)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -147,11 +146,11 @@ async function retrieveChunks(queries: string[]): Promise<SearchHit[]> {
   return deduped
 }
 
-// Step 3 — Build the synthesis prompt (shared between streaming and non-streaming)
-function buildSynthesisPrompt(
+// Step 3 — Haiku synthesizes structured recommendations (~5-8s, fits Netlify's 26s limit)
+async function synthesizeRecommendations(
   profile: Partial<PathwaysProfile>,
   chunks: Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string | null }>,
-): string {
+): Promise<RecommendationsResult> {
   const profileText = Object.entries(profile)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${k}: ${v}`)
@@ -161,7 +160,7 @@ function buildSynthesisPrompt(
     .map((c, i) => `[SOURCE ${i + 1}: ${c.display_name} — ${c.url}]\n${c.document}`)
     .join('\n\n---\n\n')
 
-  return `You are an expert Canadian immigration advisor. Based ONLY on the official IRCC sources provided below, generate a personalized immigration recommendation report for this applicant.
+  const prompt = `You are an expert Canadian immigration advisor. Based ONLY on the official IRCC sources provided below, generate a personalized immigration recommendation report for this applicant.
 
 APPLICANT PROFILE:
 ${profileText}
@@ -212,6 +211,24 @@ Output ONLY valid JSON matching this exact schema (no markdown, no commentary):
   ],
   "sources": [{"title": "Source Name", "url": "https://...", "scraped_at": "date"}]
 }`
+
+  const msg = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2048,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}'
+  const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+
+  let parsed: Omit<RecommendationsResult, 'generatedAt'>
+  try {
+    parsed = JSON.parse(clean)
+  } catch {
+    throw new Error('Claude returned invalid JSON')
+  }
+
+  return { ...parsed, generatedAt: new Date().toISOString() }
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -227,69 +244,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Profile is too incomplete to generate recommendations' }, { status: 422 })
   }
 
-  let queries: string[]
-  let chunks: SearchHit[]
   try {
-    queries = await generateSearchQueries(profile)
-    chunks = await retrieveChunks(queries)
+    const queries = await generateSearchQueries(profile)
+    const chunks = await retrieveChunks(queries)
+    const result = await synthesizeRecommendations(profile, chunks)
+    return Response.json(result)
   } catch (err) {
-    console.error('[recommendations] setup error:', err)
+    console.error('[recommendations] error:', err)
     return Response.json({ error: 'Failed to generate recommendations' }, { status: 500 })
   }
-
-  const prompt = buildSynthesisPrompt(profile, chunks)
-
-  // Stream the Claude synthesis response so Netlify doesn't gateway-timeout
-  // on the large JSON generation. The client accumulates chunks and parses at the end.
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        const stream = anthropic.messages.stream({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 4096,
-          messages: [{ role: 'user', content: prompt }],
-        })
-
-        let accumulated = ''
-        for await (const event of stream) {
-          if (
-            event.type === 'content_block_delta' &&
-            event.delta.type === 'text_delta'
-          ) {
-            accumulated += event.delta.text
-            controller.enqueue(encoder.encode(event.delta.text))
-          }
-        }
-
-        // Validate the JSON before the stream closes — if it's invalid, append an error marker
-        const clean = accumulated
-          .replace(/^```(?:json)?\s*/i, '')
-          .replace(/\s*```\s*$/i, '')
-          .trim()
-        try {
-          const parsed = JSON.parse(clean) as Omit<RecommendationsResult, 'generatedAt'>
-          // Append generatedAt by sending a final patch marker the client merges in
-          const patch = `\n__GENERATED_AT__${new Date().toISOString()}`
-          controller.enqueue(encoder.encode(patch))
-          void parsed // type-check only
-        } catch {
-          controller.enqueue(encoder.encode('\n__PARSE_ERROR__'))
-        }
-      } catch (err) {
-        console.error('[recommendations] stream error:', err)
-        controller.enqueue(encoder.encode('\n__STREAM_ERROR__'))
-      } finally {
-        controller.close()
-      }
-    },
-  })
-
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Transfer-Encoding': 'chunked',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  })
 }
