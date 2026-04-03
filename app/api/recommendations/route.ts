@@ -136,7 +136,7 @@ async function retrieveChunks(queries: string[]): Promise<SearchHit[]> {
     if (!hit.url || seen.has(hit.url)) continue
     seen.add(hit.url)
     deduped.push(hit)
-    if (deduped.length >= 15) break
+    if (deduped.length >= 10) break
   }
 
   if (deduped.length === 0) {
@@ -146,7 +146,7 @@ async function retrieveChunks(queries: string[]): Promise<SearchHit[]> {
   return deduped
 }
 
-// Step 3 — Haiku synthesizes structured recommendations (~5-8s, fits Netlify's 26s limit)
+// Step 3 — Sonnet synthesizes structured recommendations (faster output than Haiku for large JSON)
 async function synthesizeRecommendations(
   profile: Partial<PathwaysProfile>,
   chunks: Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string | null }>,
@@ -170,11 +170,12 @@ ${contextText}
 
 INSTRUCTIONS:
 1. Analyze which Canadian immigration pathways best match this profile
-2. Rank 2-4 pathways by match quality (be realistic — use the sources)
+2. Rank exactly 2-3 pathways by match quality (be realistic — use the sources)
 3. For each pathway: cite specific requirements from the sources, give realistic match scores (0-100), and identify the single most impactful next step
-4. Build a personalized roadmap for the top pathway with concrete, ordered steps
+4. Build a personalized roadmap for the top pathway with exactly 4 concrete, ordered steps
 5. NEVER invent facts not supported by the sources
 6. Match scores should reflect genuine eligibility: 90+ = strong match, 70-89 = good match with some gaps, 50-69 = possible but challenging, <50 = unlikely
+7. Be concise — keep all string values short (under 120 characters)
 
 Output ONLY valid JSON matching this exact schema (no markdown, no commentary):
 {
@@ -213,7 +214,7 @@ Output ONLY valid JSON matching this exact schema (no markdown, no commentary):
 }`
 
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
   })
