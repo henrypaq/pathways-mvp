@@ -190,7 +190,8 @@ export default function ResultsPage() {
         const err = await res.json().catch(() => ({}))
         throw new Error((err as { error?: string }).error ?? `Request failed: ${res.status}`)
       }
-      const data = (await res.json()) as RecommendationsResult
+      const data = (await res.json()) as RecommendationsResult & { error?: string }
+      if (data.error) throw new Error(data.error)
       saveResultToCache(profileHash, data)
       setResult(data)
       setSelectedPathwayId(data.topPathwayId ?? data.pathways[0]?.id ?? null)

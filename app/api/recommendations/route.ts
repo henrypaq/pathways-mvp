@@ -247,18 +247,32 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Profile is too incomplete to generate recommendations' }, { status: 422 })
   }
 
-  try {
-    console.log('[recommendations] stage 1: generating queries')
-    const queries = await generateSearchQueries(profile)
-    console.log('[recommendations] stage 2: retrieving chunks for', queries.length, 'queries')
-    const chunks = await retrieveChunks(queries)
-    console.log('[recommendations] stage 3: synthesizing from', chunks.length, 'chunks')
-    const result = await synthesizeRecommendations(profile, chunks)
-    console.log('[recommendations] done')
-    return Response.json(result)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[recommendations] error:', msg)
-    return Response.json({ error: msg }, { status: 500 })
-  }
+  // Stream newline heartbeats every 5s so Netlify's gateway doesn't 504 while
+  // Claude synthesizes. JSON.parse ignores leading whitespace so res.json()
+  // on the client side still works without any changes.
+  const enc = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      const heartbeat = setInterval(() => controller.enqueue(enc.encode('\n')), 5000)
+      try {
+        console.log('[recommendations] stage 1: generating queries')
+        const queries = await generateSearchQueries(profile)
+        console.log('[recommendations] stage 2: retrieving chunks for', queries.length, 'queries')
+        const chunks = await retrieveChunks(queries)
+        console.log('[recommendations] stage 3: synthesizing from', chunks.length, 'chunks')
+        const result = await synthesizeRecommendations(profile, chunks)
+        console.log('[recommendations] done')
+        controller.enqueue(enc.encode(JSON.stringify(result)))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[recommendations] error:', msg)
+        controller.enqueue(enc.encode(JSON.stringify({ error: msg })))
+      } finally {
+        clearInterval(heartbeat)
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, { headers: { 'Content-Type': 'application/json' } })
 }
