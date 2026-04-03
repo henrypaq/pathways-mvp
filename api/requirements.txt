@@ -3,7 +3,10 @@ uvicorn[standard]
 anthropic
 python-dotenv
 pydantic
-sentence-transformers
+openai
+tiktoken
+psycopg[binary]
+pgvector
 chromadb
 beautifulsoup4
 requests

@@ -1,9 +1,19 @@
 # Asylum Claims in Canada
 **Source:** https://www.canada.ca/en/immigration-refugees-citizenship/services/refugees/asylum-claims.html
-**Scraped:** 2026-03-31
+**Scraped:** 2026-04-03
 
 
 # ARCHIVED – Asylum claimants processed by year
+
+
+## We have archived this page and will not be updating it.
+
+We will continue to share the most recent asylum statistics, trends, and data . You can find a more complete breakdown of asylum claims in Canada in the Open Data Portal .
+
+
+## We have archived this page and will not be updating it.
+
+We will continue to share the most recent asylum statistics, trends, and data . You can find a more complete breakdown of asylum claims in Canada in the Open Data Portal .
 
 
 ## Key figures on asylum claims made in Canada
@@ -19,3 +29,21 @@ IRCC’s role in this process is to develop and implement policies, programs and
 Backgrounder: Claiming asylum in Canada – what happens?
 
 Refugee protection claims statistics (Immigration and Refugee Board of Canada)
+
+
+## Find asylum claims by year
+
+All data provided below is preliminary and subject to change. Updates will be provided on a monthly basis.
+
+Choose a time period:
+
+- 2025
+- 2024
+- 2023
+- 2022
+- 2021
+- 2020
+- 2019
+- 2018
+- 2017
+- 2011-2016

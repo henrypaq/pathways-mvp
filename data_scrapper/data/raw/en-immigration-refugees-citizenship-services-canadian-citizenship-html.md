@@ -1,6 +1,21 @@
 # Canadian Citizenship — Overview
 **Source:** https://www.canada.ca/en/immigration-refugees-citizenship/services/canadian-citizenship.html
-**Scraped:** 2026-03-31
+**Scraped:** 2026-04-03
+
+
+# Canadian citizenship
+
+Apply to become a Canadian citizen, study for the test or get proof of citizenship.
+
+
+## Alerts
+
+
+## Most requested
+
+- Sign in to your account
+- Check our current processing times
+- Check your application status
 
 
 ## Before you apply

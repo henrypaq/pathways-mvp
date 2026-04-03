@@ -1,4 +1,4 @@
-"""RAG service — ChromaDB query and collection stats."""
+"""RAG service — Supabase pgvector query and stats."""
 
 import sys
 import os
@@ -7,25 +7,25 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from data_scrapper.chunker import (
-    query as _chroma_query,
+    query as _vector_query,
     get_collection_stats as _get_stats,
 )
 
 
 def run_query(
     question: str,
-    model,
-    collection,
     n_results: int,
     filter_visa_type: str | None = None,
+    collection=None,
+    model=None,
 ) -> list[dict]:
-    """Query ChromaDB and return ranked results."""
-    return _chroma_query(
+    """Query Supabase pgvector or Chroma per PATHWAYS_VECTOR_BACKEND (default: supabase)."""
+    _ = model
+    return _vector_query(
         question=question,
-        model=model,
-        collection=collection,
         n_results=n_results,
         filter_visa_type=filter_visa_type,
+        collection=collection,
     )
 
 

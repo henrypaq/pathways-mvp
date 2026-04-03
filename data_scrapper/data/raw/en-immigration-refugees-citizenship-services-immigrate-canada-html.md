@@ -1,6 +1,11 @@
 # Immigrate to Canada — All Pathways
 **Source:** https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada.html
-**Scraped:** 2026-03-31
+**Scraped:** 2026-04-03
+
+
+# Live in Canada permanently
+
+Explore permanent residence programs to move to Canada, such as Express Entry, family sponsorship and regional programs.
 
 
 ## Work-based programs
@@ -110,3 +115,17 @@ Answer a few questions to get a list of programs to explore
 
 
 ### Families of flight PS752 victimsClosed
+
+
+## Feature
+
+
+### Francophone immigration
+
+Live, work or study in French in a Francophone community outside Quebec
+
+
+## From:
+
+- Immigration, Refugees and Citizenship Canada
+- Immigration and Refugee Board of Canada

@@ -16,7 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+_root = os.path.join(os.path.dirname(__file__), "..")
+load_dotenv(os.path.join(_root, ".env"))
+load_dotenv(os.path.join(_root, ".env.local"), override=True)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
@@ -26,14 +29,16 @@ if not ANTHROPIC_API_KEY:
     )
 
 import anthropic
-from data_scrapper.chunker import get_collection, load_model
 from api.routes import health, search, analyze
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.model = load_model()
-    app.state.collection = get_collection()
+    # Vector search uses Supabase pgvector by default (see PATHWAYS_VECTOR_BACKEND).
+    # Chroma collection is only loaded when explicitly using legacy local Chroma reads.
+    from data_scrapper.chunker import get_chroma_collection_for_app
+
+    app.state.collection = get_chroma_collection_for_app()
     app.state.anthropic = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     yield
 

@@ -12,6 +12,44 @@ import { PersonalizedRoadmap } from '@/components/results/PersonalizedRoadmap'
 import { AuthNav } from '@/components/auth/AuthNav'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
+const RESULTS_CACHE_KEY = 'pathways_results_cache'
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+type ResultsCache = {
+  profileHash: string
+  result: RecommendationsResult
+  cachedAt: number
+}
+
+function hashProfile(p: Partial<PathwaysProfile>): string {
+  const sorted = Object.fromEntries(
+    Object.entries(p)
+      .filter(([, v]) => v != null && v !== '')
+      .sort(([a], [b]) => a.localeCompare(b))
+  )
+  return JSON.stringify(sorted)
+}
+
+function loadCachedResult(profileHash: string): RecommendationsResult | null {
+  try {
+    const raw = localStorage.getItem(RESULTS_CACHE_KEY)
+    if (!raw) return null
+    const cache = JSON.parse(raw) as ResultsCache
+    if (cache.profileHash !== profileHash) return null
+    if (Date.now() - cache.cachedAt > CACHE_TTL_MS) return null
+    return cache.result
+  } catch {
+    return null
+  }
+}
+
+function saveResultToCache(profileHash: string, result: RecommendationsResult): void {
+  try {
+    localStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify({ profileHash, result, cachedAt: Date.now() }))
+  } catch {
+    // Ignore storage quota errors
+  }
+}
 
 function LoadingState() {
   const steps = [
@@ -102,7 +140,18 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 export default function ResultsPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<Partial<PathwaysProfile> | null>(null)
-  const [result, setResult] = useState<RecommendationsResult | null>(null)
+  const [result, setResult] = useState<RecommendationsResult | null>(() => {
+    // Eagerly load from cache on first render to avoid a loading flash
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY)
+      if (!raw) return null
+      const p = JSON.parse(raw) as Partial<PathwaysProfile>
+      return loadCachedResult(hashProfile(p))
+    } catch {
+      return null
+    }
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPathwayId, setSelectedPathwayId] = useState<string | null>(null)
@@ -117,7 +166,17 @@ export default function ResultsPage() {
     }
   }, [])
 
-  const fetchRecommendations = useCallback(async (p: Partial<PathwaysProfile>) => {
+  const fetchRecommendations = useCallback(async (p: Partial<PathwaysProfile>, force = false) => {
+    const profileHash = hashProfile(p)
+    if (!force) {
+      const cached = loadCachedResult(profileHash)
+      if (cached) {
+        setResult(cached)
+        setSelectedPathwayId(cached.topPathwayId ?? cached.pathways[0]?.id ?? null)
+        setLoading(false)
+        return
+      }
+    }
     setLoading(true)
     setError(null)
     try {
@@ -131,6 +190,7 @@ export default function ResultsPage() {
         throw new Error((err as { error?: string }).error ?? `Request failed: ${res.status}`)
       }
       const data = (await res.json()) as RecommendationsResult
+      saveResultToCache(profileHash, data)
       setResult(data)
       setSelectedPathwayId(data.topPathwayId ?? data.pathways[0]?.id ?? null)
     } catch (err) {
@@ -148,6 +208,12 @@ export default function ResultsPage() {
       return
     }
     setProfile(p)
+    // result was eagerly populated from cache in useState initializer — skip the API call
+    if (result) {
+      setSelectedPathwayId(result.topPathwayId ?? result.pathways[0]?.id ?? null)
+      setLoading(false)
+      return
+    }
     fetchRecommendations(p)
   }, [loadProfile, fetchRecommendations])
 
@@ -181,7 +247,7 @@ export default function ResultsPage() {
           )}
           {profile && !loading && (
             <button
-              onClick={() => fetchRecommendations(profile)}
+              onClick={() => fetchRecommendations(profile, true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#534AB7] hover:bg-[#EEEDFE] rounded-full transition-colors"
             >
               <RefreshCw size={11} /> Refresh
@@ -203,7 +269,7 @@ export default function ResultsPage() {
               <ErrorState
                 message={error}
                 onRetry={() => {
-                  if (profile) fetchRecommendations(profile)
+                  if (profile) fetchRecommendations(profile, true)
                   else router.push('/onboarding')
                 }}
               />

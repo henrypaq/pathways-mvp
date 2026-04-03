@@ -54,6 +54,40 @@ export const REQUIRED_PROFILE_FIELDS: (keyof PathwaysProfile)[] = [
   'timeline',
 ]
 
+/**
+ * Consolidates flat language test fields emitted by the voice/chat AI
+ * (language_test_taken, language_test_name, language_test_score, language_test_self)
+ * into the structured language_test nested object expected by PathwaysProfile.
+ * Safe to call on every profile update — no-ops if already structured or fields absent.
+ */
+export function normalizeVoiceProfile(
+  profile: Partial<PathwaysProfile>
+): Partial<PathwaysProfile> {
+  const raw = profile as Record<string, unknown>
+  const taken = raw.language_test_taken as string | undefined
+  if (!taken) return profile
+  // Already structured — don't overwrite with potentially stale flat fields
+  if (profile.language_test) return profile
+
+  const consolidated: PathwaysProfile['language_test'] = {
+    taken: taken as 'yes' | 'no' | 'planning',
+  }
+  const testName = raw.language_test_name as string | undefined
+  if (testName) {
+    consolidated.testName = testName as 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
+  }
+  const score = raw.language_test_score
+  if (score != null) {
+    const parsed = parseFloat(String(score))
+    if (!isNaN(parsed)) consolidated.overallScore = parsed
+  }
+  const selfAssessment = raw.language_test_self as string | undefined
+  if (selfAssessment) {
+    consolidated.selfAssessment = selfAssessment as 'native' | 'fluent' | 'intermediate' | 'basic'
+  }
+  return { ...profile, language_test: consolidated }
+}
+
 export const PROFILE_FIELD_LABELS: Record<keyof PathwaysProfile, string> = {
   current_country: 'Current country',
   nationality: 'Nationality',

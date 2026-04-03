@@ -56,7 +56,8 @@ STRIP_SELECTORS = [
     "[id='wb-bc']",    # breadcrumbs (we keep section from metadata)
     ".alert-info",     # generic alert banners
     "script", "style", "noscript",
-    ".mwsgeneric-base-html",
+    # NOTE: .mwsgeneric-base-html is intentionally NOT stripped — Canada.ca uses it
+    # for main article content sections, not just navigation boilerplate.
 ]
 
 

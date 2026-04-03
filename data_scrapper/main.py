@@ -4,8 +4,9 @@ main.py — Pathways data pipeline entrypoint.
 Commands:
   python main.py init          — initialize DB, sync sources
   python main.py scrape        — scrape all sources (first time or forced)
+  python main.py reingest      — clear manifest hashes, then full scrape + re-embed all (chunking/embed change)
   python main.py refresh       — smart refresh (only stale pages)
-  python main.py stats         — show manifest + ChromaDB stats
+  python main.py stats         — show manifest + Supabase chunk stats
   python main.py query "..."   — test a RAG query against the vector store
   python main.py scheduler     — start background refresh scheduler
 
@@ -37,6 +38,25 @@ def cmd_scrape():
     print(f"\nDone: {stats}")
 
 
+def cmd_reingest():
+    """
+    After changing chunking or embedding strategy: clear stored page hashes so every page
+    is treated as new and re-embedded, then run a forced scrape (same URLs, fresh vectors).
+    """
+    from refresh import sync_sources, run_refresh
+    from db import get_conn
+
+    sync_sources()
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE pages SET content_hash = NULL, content_hash_prev = NULL"
+        )
+        conn.commit()
+    log.info("Manifest hashes cleared — all pages will re-embed on this run.")
+    stats = run_refresh(force=True, trigger="reingest")
+    print(f"\nDone: {stats}")
+
+
 def cmd_refresh():
     """Smart refresh — only re-scrapes stale pages."""
     from refresh import run_refresh
@@ -50,15 +70,11 @@ def cmd_stats():
 
 
 def cmd_query(question: str):
-    from chunker import get_chroma_client, get_collection, load_model, query as chroma_query
-    import json
+    from chunker import query as vector_query
 
     print(f"\n🔍 Query: {question}\n{'─'*60}")
-    client = get_chroma_client()
-    collection = get_collection(client)
-    model = load_model()
 
-    results = chroma_query(question, model, collection, n_results=5)
+    results = vector_query(question, n_results=5)
 
     if not results:
         print("No results found.")
@@ -82,6 +98,7 @@ def cmd_scheduler():
 COMMANDS = {
     "init": cmd_init,
     "scrape": cmd_scrape,
+    "reingest": cmd_reingest,
     "refresh": cmd_refresh,
     "stats": cmd_stats,
     "query": cmd_query,

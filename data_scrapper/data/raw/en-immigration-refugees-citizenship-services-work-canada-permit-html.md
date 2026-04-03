@@ -1,41 +1,90 @@
 # Work Permits — Overview
 **Source:** https://www.canada.ca/en/immigration-refugees-citizenship/services/work-canada/permit.html
-**Scraped:** 2026-03-31
+**Scraped:** 2026-04-03
 
 
-## Before you apply
+# Work in Canada temporarily
+
+Apply for a work permit, extend a work permit or hire a foreign worker.
 
 
-### Find out the type of work permit you need
+## Most requested
+
+- Sign in to your account
+- Processing times
+- Check your application status
+- Job bank
 
 
-### Find a job on Job Bank
+## Apply for a work permit
 
 
-## Apply for a work permit or extension
+### Apply from outside Canada
 
 
-### Apply for a work permit
+### Apply in Canada
 
 
-### Extend or change your work permit
+### Apply at a port of entry
 
 
-### Want to work and live in Canada permanently?
-
-Explore permanent residence (PR) programs (such as Express Entry)
+### Who can work without a work permit
 
 
-### Post-graduation work permit (PGWP)
+### Extensions or changing conditions
 
 
-### International students
+### Extend your work permit
 
 
-### Travel and work with International Experience Canada (IEC)
+### Change conditions, job or employers
+
+
+## Types of work permits
+
+
+### Employer-specific work permit
+
+- Job offer required
+
+
+### Open work permit
+
+- Job offer not required
+
+
+### Not sure what kind of work permit you need?
+
+Answer a few questions about yourself to find out
+
+- if you’re eligible
+- which type you need
+- if there are special instructions
+
+Find the work permit you need.
+
+
+## Applications for work permits with special instructions
+
+Applications for some open work permits and employer-specific work permits have special instructions:
+
+
+### Post-graduation work permit
+
+
+### Working as a student
+
+
+### Work in Canada with International Experience Canada
 
 
 ### Work while you wait for permanent residence
+
+
+### Open work permits for family members of foreign workers
+
+
+### All work permits with special instructions
 
 
 ## After you get a work permit
@@ -50,28 +99,31 @@ Explore permanent residence (PR) programs (such as Express Entry)
 ### Leaving and re-entering Canada
 
 
+### Worker rights and labour standards
+
+
+### Restore your legal status
+
+
 ### Report an abusive employer
 
 
-### Changing jobs or employers
+### Pathways to permanent residence
 
 
-### Virtual sessions about pathways to permanent residence
+## Canadian employers
 
 
-### Check if you need an LMIA
+### Labour market impact assessment
+
+
+### Hire a permanent foreign worker
 
 
 ### Hire a temporary foreign worker
 
 
 ### Hire a caregiver
-
-
-### LMIA processing times
-
-
-### Hire a permanent foreign worker
 
 
 ### Hire a newcomer as an intern

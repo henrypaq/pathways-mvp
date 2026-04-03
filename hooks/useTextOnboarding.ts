@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { PathwaysProfile, ConversationTurn, ChatMessage } from '@/types/voice'
-import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
+import { REQUIRED_PROFILE_FIELDS, normalizeVoiceProfile } from '@/types/voice'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 
 // Reuses /api/voice/chat — the endpoint is mode-agnostic (no TTS, no audio in chat path)
@@ -89,10 +89,11 @@ export function useTextOnboarding(): UseTextOnboardingReturn {
         }
       }
       if (deltaMatches.length > 0) {
-        profileRef.current = mergedProfile
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(mergedProfile))
-        setProfile(mergedProfile)
-        void savePathwaysProfileToSupabase(mergedProfile).catch((err) => {
+        const normalizedProfile = normalizeVoiceProfile(mergedProfile)
+        profileRef.current = normalizedProfile
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(normalizedProfile))
+        setProfile(normalizedProfile)
+        void savePathwaysProfileToSupabase(normalizedProfile).catch((err) => {
           console.error('[text] Incremental profile sync to Supabase failed:', err)
         })
       }

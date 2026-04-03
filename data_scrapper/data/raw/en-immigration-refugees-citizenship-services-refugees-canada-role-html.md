@@ -1,6 +1,6 @@
 # Canada's Refugee Protection System
 **Source:** https://www.canada.ca/en/immigration-refugees-citizenship/services/refugees/canada-role.html
-**Scraped:** 2026-03-31
+**Scraped:** 2026-04-03
 
 
 # How Canada’s refugee system works

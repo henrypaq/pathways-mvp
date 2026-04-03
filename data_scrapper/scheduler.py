@@ -54,7 +54,7 @@ def job_high_change_refresh():
     from db import get_pages_needing_refresh, get_conn
     from sources import IRCC_SOURCES
     from scraper import scrape_page
-    from chunker import embed_page, get_chroma_client, get_collection, load_model
+    from chunker import embed_page, get_connection, supabase_db_configured
     from db import record_scrape, record_embed, start_run, finish_run
     import uuid, time
 
@@ -70,50 +70,54 @@ def job_high_change_refresh():
     log.info(f"Refreshing {len(due)} high-change pages...")
 
     source_meta = {s["url"]: s for s in IRCC_SOURCES}
-    client = get_chroma_client()
-    collection = get_collection(client)
-    model = load_model()
+    pg_conn = get_connection() if supabase_db_configured() else None
     run_id = str(uuid.uuid4())
     start_run(run_id, trigger="scheduled_high_change", total=len(due))
 
     stats = {"changed": 0, "unchanged": 0, "errors": 0, "new": 0}
 
-    for page in due:
-        url = page["url"]
-        result = scrape_page(url, page["display_name"])
+    try:
+        for page in due:
+            url = page["url"]
+            result = scrape_page(url, page["display_name"])
 
-        if not result or result.get("error"):
-            record_scrape(url, run_id, "", "", status="error", error="scrape_failed")
-            stats["errors"] += 1
-            continue
+            if not result or result.get("error"):
+                record_scrape(url, run_id, "", "", status="error", error="scrape_failed")
+                stats["errors"] += 1
+                continue
 
-        manifest_result = record_scrape(
-            url=url, run_id=run_id,
-            raw_html=result["raw_html"], raw_path=result["raw_path"],
-            status="ok",
-        )
+            manifest_result = record_scrape(
+                url=url,
+                run_id=run_id,
+                raw_html=result["raw_html"],
+                raw_path=result["raw_path"],
+                status="ok",
+            )
 
-        if manifest_result["changed"] or manifest_result["is_new"]:
-            source = source_meta.get(url, {})
-            full_result = {
-                **result,
-                "section": source.get("section", ""),
-                "visa_types": source.get("visa_types", []),
-                "programs": source.get("programs", []),
-                "high_change": True,
-                "hash": manifest_result["hash"],
-            }
-            n = embed_page(full_result, model, collection)
-            record_embed(url, n)
-            stats["changed"] += 1
-            log.info(f"  📝 Updated: {page['display_name']} ({n} chunks)")
-        else:
-            stats["unchanged"] += 1
-            log.info(f"  ✓ No change: {page['display_name']}")
+            if manifest_result["changed"] or manifest_result["is_new"]:
+                source = source_meta.get(url, {})
+                full_result = {
+                    **result,
+                    "section": source.get("section", ""),
+                    "visa_types": source.get("visa_types", []),
+                    "programs": source.get("programs", []),
+                    "high_change": True,
+                    "hash": manifest_result["hash"],
+                }
+                n = embed_page(full_result, conn=pg_conn)
+                record_embed(url, n, status="ok")
+                stats["changed"] += 1
+                log.info(f"  📝 Updated: {page['display_name']} ({n} chunks)")
+            else:
+                stats["unchanged"] += 1
+                log.info(f"  ✓ No change: {page['display_name']}")
 
-        time.sleep(1.5)
+            time.sleep(1.5)
 
-    finish_run(run_id, stats)
+        finish_run(run_id, stats)
+    finally:
+        if pg_conn is not None:
+            pg_conn.close()
     log.info(f"⏰ High-change refresh complete: {stats}")
 
 
@@ -122,13 +126,13 @@ def job_log_stats():
     from db import get_stats
     from chunker import get_collection_stats
     stats = get_stats()
-    chroma = get_collection_stats()
+    vs = get_collection_stats()
     log.info(
         f"📊 STATS — "
         f"Pages: {stats['scraped_ok']}/{stats['total_pages']} scraped | "
         f"Embedded: {stats['embedded_ok']} | "
         f"Stale: {stats['stale_pages']} | "
-        f"Chunks: {chroma['total_chunks']:,}"
+        f"Chunks: {vs['total_chunks']:,}"
     )
 
 

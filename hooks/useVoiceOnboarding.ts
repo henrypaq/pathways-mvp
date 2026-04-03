@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react'
 import type { OrbState, PathwaysProfile, ConversationTurn } from '@/types/voice'
-import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
+import { REQUIRED_PROFILE_FIELDS, normalizeVoiceProfile } from '@/types/voice'
 import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 
@@ -235,10 +235,11 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         }
       }
       if (deltaMatches.length > 0) {
-        profileRef.current = mergedProfile
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(mergedProfile))
-        setProfile(mergedProfile)
-        void savePathwaysProfileToSupabase(mergedProfile).catch((err) => {
+        const normalizedProfile = normalizeVoiceProfile(mergedProfile)
+        profileRef.current = normalizedProfile
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(normalizedProfile))
+        setProfile(normalizedProfile)
+        void savePathwaysProfileToSupabase(normalizedProfile).catch((err) => {
           console.error('[voice] Incremental profile sync to Supabase failed:', err)
         })
       }

@@ -30,7 +30,7 @@ from pathlib import Path
 
 from sources import IRCC_SOURCES
 from scraper import scrape_page
-from chunker import embed_page, get_chroma_client, get_collection, load_model
+from chunker import embed_page, get_connection, supabase_db_configured
 from db import (
     init_db, upsert_source, record_scrape, record_embed,
     start_run, finish_run, get_pages_needing_refresh, get_stats,
@@ -109,92 +109,96 @@ def run_refresh(
     run_id = str(uuid.uuid4())
     start_run(run_id, trigger=trigger, total=total)
 
-    # Initialize ChromaDB + embedding model once (expensive)
-    client = get_chroma_client()
-    collection = get_collection(client)
-    model = load_model()
+    # Reuse one Postgres connection per run when Supabase is configured (Chroma-only OK without DSN)
+    pg_conn = get_connection() if supabase_db_configured() else None
 
     stats = {"changed": 0, "unchanged": 0, "errors": 0, "new": 0}
 
     # Build a URL→source lookup for metadata
     source_meta = {s["url"]: s for s in IRCC_SOURCES}
 
-    for i, page in enumerate(pages_to_refresh, 1):
-        url = page["url"]
-        display_name = page["display_name"]
-        source = source_meta.get(url, {})
+    try:
+        for i, page in enumerate(pages_to_refresh, 1):
+            url = page["url"]
+            display_name = page["display_name"]
+            source = source_meta.get(url, {})
 
-        log.info(f"\n[{i}/{total}] {display_name}")
-        log.info(f"  Reason: {page.get('refresh_reason', 'unknown')}")
+            log.info(f"\n[{i}/{total}] {display_name}")
+            log.info(f"  Reason: {page.get('refresh_reason', 'unknown')}")
 
-        # ── Step 1: Scrape ──────────────────────────────────────
-        result = scrape_page(url, display_name)
+            # ── Step 1: Scrape ──────────────────────────────────────
+            result = scrape_page(url, display_name)
 
-        if not result or result.get("error"):
-            error_msg = (result or {}).get("error", "scrape_failed")
-            log.error(f"  ✗ Scrape failed: {error_msg}")
-            record_scrape(url, run_id, "", "", status="error", error=error_msg)
-            stats["errors"] += 1
-            continue
+            if not result or result.get("error"):
+                error_msg = (result or {}).get("error", "scrape_failed")
+                log.error(f"  ✗ Scrape failed: {error_msg}")
+                record_scrape(url, run_id, "", "", status="error", error=error_msg)
+                stats["errors"] += 1
+                continue
 
-        # ── Step 2: Hash comparison ──────────────────────────────
-        manifest_result = record_scrape(
-            url=url,
-            run_id=run_id,
-            raw_html=result["raw_html"],
-            raw_path=result["raw_path"],
-            status="ok",
-        )
+            # ── Step 2: Hash comparison ──────────────────────────────
+            manifest_result = record_scrape(
+                url=url,
+                run_id=run_id,
+                raw_html=result["raw_html"],
+                raw_path=result["raw_path"],
+                status="ok",
+            )
 
-        is_new = manifest_result["is_new"]
-        changed = manifest_result["changed"]
+            is_new = manifest_result["is_new"]
+            changed = manifest_result["changed"]
 
-        if is_new:
-            log.info(f"  🆕 NEW page — embedding now")
-            stats["new"] += 1
-        elif changed:
-            log.info(f"  📝 CONTENT CHANGED (hash: {manifest_result['hash'][:12]}...)")
-            log.info(f"     Previous: {manifest_result['prev_hash'][:12] if manifest_result['prev_hash'] else 'none'}...")
-            stats["changed"] += 1
-        else:
-            log.info(f"  ✓ No change — skipping re-embed (hash: {manifest_result['hash'][:12]}...)")
-            stats["unchanged"] += 1
-            # Politeness delay even for unchanged pages
+            if is_new:
+                log.info(f"  🆕 NEW page — embedding now")
+                stats["new"] += 1
+            elif changed:
+                log.info(f"  📝 CONTENT CHANGED (hash: {manifest_result['hash'][:12]}...)")
+                log.info(f"     Previous: {manifest_result['prev_hash'][:12] if manifest_result['prev_hash'] else 'none'}...")
+                stats["changed"] += 1
+            else:
+                log.info(f"  ✓ No change — skipping re-embed (hash: {manifest_result['hash'][:12]}...)")
+                stats["unchanged"] += 1
+                # Politeness delay even for unchanged pages
+                if i < total:
+                    time.sleep(0.5)
+                continue
+
+            # ── Step 3: Re-embed only if changed ────────────────────
+            try:
+                full_result = {
+                    **result,
+                    "section": source.get("section", page.get("section", "")),
+                    "visa_types": source.get("visa_types", []),
+                    "programs": source.get("programs", []),
+                    "high_change": source.get("high_change", False),
+                    "hash": manifest_result["hash"],
+                }
+
+                # Check if this page is stale (no content change in >6 months)
+                from db import get_conn
+                with get_conn() as conn:
+                    row = conn.execute("SELECT is_stale FROM pages WHERE url=?", (url,)).fetchone()
+                is_stale = bool(row["is_stale"]) if row else False
+
+                chunk_count = embed_page(
+                    full_result, is_stale=is_stale, conn=pg_conn
+                )
+                record_embed(url, chunk_count, status="ok")
+                log.info(f"  ✅ Embedded {chunk_count} chunks")
+
+            except Exception as e:
+                log.error(f"  ✗ Embedding error: {e}")
+                record_embed(url, 0, status="error")
+                stats["errors"] += 1
+
+            # Politeness delay between requests
             if i < total:
-                time.sleep(0.5)
-            continue
+                time.sleep(1.5)
 
-        # ── Step 3: Re-embed only if changed ────────────────────
-        try:
-            full_result = {
-                **result,
-                "section": source.get("section", page.get("section", "")),
-                "visa_types": source.get("visa_types", []),
-                "programs": source.get("programs", []),
-                "high_change": source.get("high_change", False),
-                "hash": manifest_result["hash"],
-            }
-
-            # Check if this page is stale (no content change in >6 months)
-            from db import get_conn
-            with get_conn() as conn:
-                row = conn.execute("SELECT is_stale FROM pages WHERE url=?", (url,)).fetchone()
-            is_stale = bool(row["is_stale"]) if row else False
-
-            chunk_count = embed_page(full_result, model, collection, is_stale=is_stale)
-            record_embed(url, chunk_count, status="ok")
-            log.info(f"  ✅ Embedded {chunk_count} chunks")
-
-        except Exception as e:
-            log.error(f"  ✗ Embedding error: {e}")
-            record_embed(url, 0, status="error")
-            stats["errors"] += 1
-
-        # Politeness delay between requests
-        if i < total:
-            time.sleep(1.5)
-
-    finish_run(run_id, stats)
+        finish_run(run_id, stats)
+    finally:
+        if pg_conn is not None:
+            pg_conn.close()
 
     log.info(f"\n{'='*60}")
     log.info(f"REFRESH COMPLETE")
@@ -215,7 +219,7 @@ def print_stats():
     print("─" * 40)
     print(f"Total pages tracked:  {stats['total_pages']}")
     print(f"Successfully scraped: {stats['scraped_ok']}")
-    print(f"Embedded in ChromaDB: {stats['embedded_ok']}")
+    print(f"Embedded (manifest): {stats['embedded_ok']}")
     print(f"Stale pages (>6mo):   {stats['stale_pages']}")
     print(f"Error pages:          {stats['error_pages']}")
     if stats["last_run"]:
@@ -225,12 +229,11 @@ def print_stats():
         print(f"  Trigger:   {lr['trigger']}")
         print(f"  Changed:   {lr['changed_pages']}")
 
-    # Also show ChromaDB stats
     from chunker import get_collection_stats
-    chroma = get_collection_stats()
-    print(f"\nChromaDB collection: '{chroma['collection']}'")
-    print(f"Total chunks:        {chroma['total_chunks']:,}")
-    print(f"Storage path:        {chroma['path']}")
+    vs = get_collection_stats()
+    print(f"\nVector store:        {vs.get('backend', 'supabase')}")
+    print(f"Table:               {vs['collection']}")
+    print(f"Total chunk rows:    {vs['total_chunks']:,}")
     print()
 
     # Show pages due for refresh
