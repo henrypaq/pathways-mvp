@@ -31,6 +31,7 @@ interface FormValues {
   // Language test (follows language_ability)
   language_test_taken: string  // '' | 'yes' | 'no' | 'planning'
   language_test_name: string   // '' | 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
+  language_test_other_name: string
   language_test_overall: string
   language_test_self: string   // '' | 'native' | 'fluent' | 'intermediate' | 'basic'
   // Optional
@@ -53,6 +54,7 @@ const EMPTY: FormValues = {
   timeline: '',
   language_test_taken: '',
   language_test_name: '',
+  language_test_other_name: '',
   language_test_overall: '',
   language_test_self: '',
   occupation: '',
@@ -261,6 +263,7 @@ export function ManualProfileForm() {
       is_employed: stored.is_employed === true ? 'yes' : stored.is_employed === false ? 'no' : '',
       language_test_taken: stored.language_test?.taken ?? '',
       language_test_name: stored.language_test?.testName ?? '',
+      language_test_other_name: stored.language_test?.otherTestName ?? '',
       language_test_overall: stored.language_test?.overallScore?.toString() ?? '',
       language_test_self: stored.language_test?.selfAssessment ?? '',
       years_of_experience: stored.years_of_experience ?? '',
@@ -301,6 +304,7 @@ export function ManualProfileForm() {
       profile.language_test = {
         taken: 'yes',
         ...(values.language_test_name ? { testName: values.language_test_name as 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other' } : {}),
+        ...(values.language_test_name === 'other' && values.language_test_other_name.trim() ? { otherTestName: values.language_test_other_name.trim() } : {}),
         ...(values.language_test_overall ? { overallScore: Number(values.language_test_overall) } : {}),
       }
     } else if (values.language_test_taken === 'no' || values.language_test_taken === 'planning') {
@@ -439,22 +443,46 @@ export function ManualProfileForm() {
                           transition={{ duration: 0.2, ease: 'easeInOut' }}
                           className="overflow-hidden"
                         >
-                          <Field label="Overall score">
-                            <input
-                              type="number"
-                              step="any"
-                              value={values.language_test_overall}
-                              onChange={(e) => set('language_test_overall')(e.target.value)}
-                              placeholder={
-                                values.language_test_name === 'IELTS' || values.language_test_name === 'CELPIP'
-                                  ? 'e.g. 7.5'
-                                  : values.language_test_name === 'TEF_Canada' || values.language_test_name === 'TCF_Canada'
-                                  ? 'e.g. 450'
-                                  : 'Enter your overall score'
-                              }
-                              className={inputClass}
-                            />
-                          </Field>
+                          <div className="flex flex-col gap-3">
+                            <AnimatePresence initial={false}>
+                              {values.language_test_name === 'other' && (
+                                <motion.div
+                                  key="other-name"
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                  className="overflow-hidden"
+                                >
+                                  <Field label="Test name">
+                                    <input
+                                      type="text"
+                                      value={values.language_test_other_name}
+                                      onChange={(e) => set('language_test_other_name')(e.target.value)}
+                                      placeholder="e.g. TOEFL, PTE Academic…"
+                                      className={inputClass}
+                                    />
+                                  </Field>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                            <Field label="Overall score">
+                              <input
+                                type="number"
+                                step="any"
+                                value={values.language_test_overall}
+                                onChange={(e) => set('language_test_overall')(e.target.value)}
+                                placeholder={
+                                  values.language_test_name === 'IELTS' || values.language_test_name === 'CELPIP'
+                                    ? 'e.g. 7.5'
+                                    : values.language_test_name === 'TEF_Canada' || values.language_test_name === 'TCF_Canada'
+                                    ? 'e.g. 450'
+                                    : 'Enter your overall score'
+                                }
+                                className={inputClass}
+                              />
+                            </Field>
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
