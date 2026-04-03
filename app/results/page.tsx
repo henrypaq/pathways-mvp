@@ -10,6 +10,7 @@ import type { RecommendationsResult } from '@/lib/types'
 import { PathwayMatchCard } from '@/components/results/PathwayMatchCard'
 import { PersonalizedRoadmap } from '@/components/results/PersonalizedRoadmap'
 import { AuthNav } from '@/components/auth/AuthNav'
+import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const RESULTS_CACHE_KEY = 'pathways_results_cache'
@@ -208,6 +209,9 @@ export default function ResultsPage() {
       return
     }
     setProfile(p)
+    // Sync localStorage profile to Supabase in the background (backfills if onboarding
+    // completed before the profile save was working, and keeps data current).
+    void savePathwaysProfileToSupabase(p).catch(() => { /* best-effort */ })
     // result was eagerly populated from cache in useState initializer — skip the API call
     if (result) {
       setSelectedPathwayId(result.topPathwayId ?? result.pathways[0]?.id ?? null)

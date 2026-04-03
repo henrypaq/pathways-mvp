@@ -16,8 +16,9 @@ function getSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL ??
     process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL ??
     ''
-  // Prefer service role key for server-side routes (bypasses RLS/grants)
+  // Prefer secret/service role key for server-side routes (bypasses RLS/grants)
   const key =
+    process.env.SUPABASE_SECRET_KEY ??
     process.env.SUPABASE_SERVICE_ROLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
