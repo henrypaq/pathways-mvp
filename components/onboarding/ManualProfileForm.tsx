@@ -31,10 +31,7 @@ interface FormValues {
   // Language test (follows language_ability)
   language_test_taken: string  // '' | 'yes' | 'no' | 'planning'
   language_test_name: string   // '' | 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
-  language_test_listening: string
-  language_test_reading: string
-  language_test_writing: string
-  language_test_speaking: string
+  language_test_overall: string
   language_test_self: string   // '' | 'native' | 'fluent' | 'intermediate' | 'basic'
   // Optional
   occupation: string
@@ -56,10 +53,7 @@ const EMPTY: FormValues = {
   timeline: '',
   language_test_taken: '',
   language_test_name: '',
-  language_test_listening: '',
-  language_test_reading: '',
-  language_test_writing: '',
-  language_test_speaking: '',
+  language_test_overall: '',
   language_test_self: '',
   occupation: '',
   is_employed: '',
@@ -267,10 +261,7 @@ export function ManualProfileForm() {
       is_employed: stored.is_employed === true ? 'yes' : stored.is_employed === false ? 'no' : '',
       language_test_taken: stored.language_test?.taken ?? '',
       language_test_name: stored.language_test?.testName ?? '',
-      language_test_listening: stored.language_test?.scores?.listening?.toString() ?? '',
-      language_test_reading: stored.language_test?.scores?.reading?.toString() ?? '',
-      language_test_writing: stored.language_test?.scores?.writing?.toString() ?? '',
-      language_test_speaking: stored.language_test?.scores?.speaking?.toString() ?? '',
+      language_test_overall: stored.language_test?.overallScore?.toString() ?? '',
       language_test_self: stored.language_test?.selfAssessment ?? '',
       years_of_experience: stored.years_of_experience ?? '',
       education_level: String(stored.education_level ?? ''),
@@ -310,16 +301,7 @@ export function ManualProfileForm() {
       profile.language_test = {
         taken: 'yes',
         ...(values.language_test_name ? { testName: values.language_test_name as 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other' } : {}),
-        ...(values.language_test_listening && values.language_test_reading && values.language_test_writing && values.language_test_speaking
-          ? {
-              scores: {
-                listening: Number(values.language_test_listening),
-                reading: Number(values.language_test_reading),
-                writing: Number(values.language_test_writing),
-                speaking: Number(values.language_test_speaking),
-              },
-            }
-          : {}),
+        ...(values.language_test_overall ? { overallScore: Number(values.language_test_overall) } : {}),
       }
     } else if (values.language_test_taken === 'no' || values.language_test_taken === 'planning') {
       profile.language_test = {
@@ -457,22 +439,21 @@ export function ManualProfileForm() {
                           transition={{ duration: 0.2, ease: 'easeInOut' }}
                           className="overflow-hidden"
                         >
-                          <Field label={`Scores${values.language_test_name ? ` (${SCORE_HINTS[values.language_test_name] ?? 'your score'} per section)` : ''}`}>
-                            <div className="grid grid-cols-2 gap-2">
-                              {(['listening', 'reading', 'writing', 'speaking'] as const).map((section) => (
-                                <div key={section} className="flex flex-col gap-1">
-                                  <span className="text-[10px] text-gray-400 capitalize">{section}</span>
-                                  <input
-                                    type="number"
-                                    step="any"
-                                    value={values[`language_test_${section}` as keyof FormValues]}
-                                    onChange={(e) => set(`language_test_${section}` as keyof FormValues)(e.target.value)}
-                                    placeholder="—"
-                                    className={inputClass}
-                                  />
-                                </div>
-                              ))}
-                            </div>
+                          <Field label="Overall score">
+                            <input
+                              type="number"
+                              step="any"
+                              value={values.language_test_overall}
+                              onChange={(e) => set('language_test_overall')(e.target.value)}
+                              placeholder={
+                                values.language_test_name === 'IELTS' || values.language_test_name === 'CELPIP'
+                                  ? 'e.g. 7.5'
+                                  : values.language_test_name === 'TEF_Canada' || values.language_test_name === 'TCF_Canada'
+                                  ? 'e.g. 450'
+                                  : 'Enter your overall score'
+                              }
+                              className={inputClass}
+                            />
                           </Field>
                         </motion.div>
                       )}

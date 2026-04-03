@@ -1,16 +1,10 @@
 import type { UserProfile, LanguageTest } from './pathwayScorer'
 
 // Mirrors the PathwaysProfile.language_test shape stored in Supabase profiles.data.
-// The onboarding form stores per-section scores; the scorer expects a single overallScore.
 type StoredLanguageTest = {
   taken: 'yes' | 'no' | 'planning'
   testName?: 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
-  scores?: {
-    listening: number
-    reading: number
-    writing: number
-    speaking: number
-  }
+  overallScore?: number
   selfAssessment?: 'native' | 'fluent' | 'intermediate' | 'basic'
 }
 
@@ -97,9 +91,6 @@ function mapLanguageTestFromFlat(data: Record<string, unknown>): LanguageTest | 
   return result
 }
 
-// The onboarding stores per-section scores (listening/reading/writing/speaking).
-// The scorer expects a single overallScore. We derive it as the arithmetic mean of the
-// four section scores, which approximates the IELTS overall band score.
 function mapLanguageTest(raw: unknown): LanguageTest | null {
   if (!raw || typeof raw !== 'object') return null
   const stored = raw as StoredLanguageTest
@@ -110,11 +101,8 @@ function mapLanguageTest(raw: unknown): LanguageTest | null {
     selfAssessment: stored.selfAssessment,
   }
 
-  if (stored.scores && stored.taken === 'yes') {
-    const { listening, reading, writing, speaking } = stored.scores
-    const mean = (listening + reading + writing + speaking) / 4
-    // Round to one decimal to stay consistent with IELTS band score format
-    result.overallScore = Math.round(mean * 10) / 10
+  if (stored.overallScore != null && stored.taken === 'yes') {
+    result.overallScore = stored.overallScore
   }
 
   return result
@@ -172,7 +160,7 @@ export function mapProfileToScorer(
     currentVisaStatus: (data.current_visa_status as string) || undefined,
 
     // Source: profiles.data.language_test — JSONB object written by ManualProfileForm
-    // Shape: { taken, testName, scores: { listening, reading, writing, speaking }, selfAssessment }
+    // Shape: { taken, testName, overallScore, selfAssessment }
     // Fallback: flat fields language_test_taken/name/score/self written by voice/chat AI
     languageTest: mapLanguageTest(data.language_test) ?? mapLanguageTestFromFlat(data),
 

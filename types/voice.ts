@@ -26,12 +26,7 @@ export interface PathwaysProfile {
   language_test?: {
     taken: 'yes' | 'no' | 'planning'
     testName?: 'IELTS' | 'TEF_Canada' | 'CELPIP' | 'TCF_Canada' | 'other'
-    scores?: {
-      listening: number
-      reading: number
-      writing: number
-      speaking: number
-    }
+    overallScore?: number
     selfAssessment?: 'native' | 'fluent' | 'intermediate' | 'basic'
   } | null
   years_of_experience?: '0' | '1' | '2' | '3' | '4' | '5+' | null
