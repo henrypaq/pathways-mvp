@@ -214,17 +214,19 @@ Output ONLY valid JSON matching this exact schema (no markdown, no commentary):
 
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
   })
 
   const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}'
+  const stopReason = msg.stop_reason
   const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
 
   let parsed: Omit<RecommendationsResult, 'generatedAt'>
   try {
     parsed = JSON.parse(clean)
   } catch {
+    console.error('[recommendations] stop_reason:', stopReason, '— raw response (first 500 chars):', clean.slice(0, 500))
     throw new Error('Claude returned invalid JSON')
   }
 
