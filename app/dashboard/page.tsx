@@ -123,12 +123,24 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="mt-6 pt-5 border-t border-[#F5F5F5]">
+          <div className="mt-6 pt-5 border-t border-[#F5F5F5] space-y-2">
             <Link
               href="/results"
-              className="text-[12px] text-[#534AB7] hover:text-[#3C3489] transition-colors"
+              className="block text-[12px] text-[#534AB7] hover:text-[#3C3489] transition-colors"
             >
               View all pathways →
+            </Link>
+            <Link
+              href="/dashboard/profile"
+              className="block text-[12px] text-[#534AB7] hover:text-[#3C3489] transition-colors"
+            >
+              Edit Profile →
+            </Link>
+            <Link
+              href="/dashboard/documents"
+              className="block text-[12px] text-[#534AB7] hover:text-[#3C3489] transition-colors"
+            >
+              Documents →
             </Link>
           </div>
         </aside>
