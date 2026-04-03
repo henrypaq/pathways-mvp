@@ -35,6 +35,16 @@ function persistVoiceHistory(turns: ConversationTurn[]) {
   }
 }
 
+function loadProfileFromStorage(): Partial<PathwaysProfile> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const stored = localStorage.getItem(PROFILE_KEY)
+    return stored ? (JSON.parse(stored) as Partial<PathwaysProfile>) : {}
+  } catch {
+    return {}
+  }
+}
+
 export interface UseVoiceOnboardingReturn {
   orbState: OrbState
   profile: Partial<PathwaysProfile>
@@ -58,21 +68,13 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     setOrbState(next)
   }, [])
 
-  const [profile, setProfile] = useState<Partial<PathwaysProfile>>(() => {
-    if (typeof window === 'undefined') return {}
-    try {
-      const stored = localStorage.getItem(PROFILE_KEY)
-      return stored ? (JSON.parse(stored) as Partial<PathwaysProfile>) : {}
-    } catch {
-      return {}
-    }
-  })
+  const [profile, setProfile] = useState<Partial<PathwaysProfile>>(() => loadProfileFromStorage())
   const [history, setHistory] = useState<ConversationTurn[]>(initialHistory)
   const [isComplete, setIsComplete] = useState<boolean>(readOnboardingDone)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const historyRef = useRef<ConversationTurn[]>(initialHistory)
-  const profileRef = useRef<Partial<PathwaysProfile>>({})
+  const profileRef = useRef<Partial<PathwaysProfile>>(loadProfileFromStorage())
   const isCompleteRef = useRef(readOnboardingDone())
   const hasWelcomed = useRef(false)
 
@@ -163,10 +165,10 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     [],
   )
 
-  const commitHistory = useCallback((turns: ConversationTurn[]) => {
+  const commitHistory = useCallback((turns: ConversationTurn[], persistToSession = true) => {
     historyRef.current = turns
     setHistory(turns)
-    persistVoiceHistory(turns)
+    if (persistToSession) persistVoiceHistory(turns)
   }, [])
 
   const runTurn = async (transcript: string): Promise<void> => {
@@ -222,19 +224,20 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       console.log('[voice] stream complete, fullText:', fullText)
 
       const deltaMatches = [...fullText.matchAll(/PROFILE_DELTA:(\{[^}]*\})/g)]
+      let mergedProfile: Partial<PathwaysProfile> = { ...profileRef.current }
       for (const match of deltaMatches) {
         try {
           const delta = JSON.parse(match[1]) as Partial<PathwaysProfile>
           console.log('[voice] profile delta:', delta)
-          setProfile((prev) => {
-            const updated = { ...prev, ...delta }
-            profileRef.current = updated
-            localStorage.setItem(PROFILE_KEY, JSON.stringify(updated))
-            return updated
-          })
+          mergedProfile = { ...mergedProfile, ...delta }
         } catch (e) {
           console.error('[voice] delta parse error:', e)
         }
+      }
+      if (deltaMatches.length > 0) {
+        profileRef.current = mergedProfile
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(mergedProfile))
+        setProfile(mergedProfile)
       }
 
       let completedNow = false
@@ -244,15 +247,14 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         isCompleteRef.current = true
         setIsComplete(true)
         localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
-        try {
-          sessionStorage.removeItem(VOICE_HISTORY_KEY)
-        } catch {
-          /* ignore */
-        }
 
         void (async () => {
           try {
-            await savePathwaysProfileToSupabase(profileRef.current)
+            const raw = localStorage.getItem(PROFILE_KEY)
+            const fromStorage = raw
+              ? (JSON.parse(raw) as Partial<PathwaysProfile>)
+              : profileRef.current
+            await savePathwaysProfileToSupabase(fromStorage)
           } catch (err) {
             console.error('[voice] Failed to save profile to Supabase:', err)
           }
@@ -278,7 +280,15 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
           ? [...historyRef.current, assistantEntry]
           : [...historyRef.current, { role: 'user' as const, content: transcript }, assistantEntry]
 
-      commitHistory(updatedHistory)
+      // Do not persist voice transcript after completion — it breaks the next visit (no welcome + mic blocked).
+      commitHistory(updatedHistory, !completedNow)
+      if (completedNow) {
+        try {
+          sessionStorage.removeItem(VOICE_HISTORY_KEY)
+        } catch {
+          /* ignore */
+        }
+      }
 
       if (!mountedRef.current || ac.signal.aborted) return
 
@@ -337,6 +347,10 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   const triggerWelcome = useCallback(() => {
     if (hasWelcomed.current) return
     hasWelcomed.current = true
+    if (typeof window !== 'undefined' && localStorage.getItem(ONBOARDING_DONE_KEY) === 'true') {
+      console.log('[voice] onboarding already complete, skipping welcome')
+      return
+    }
     if (historyRef.current.length > 0) {
       console.log('[voice] restored voice session from storage — tap the orb to continue')
       return
@@ -349,7 +363,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   }, [])
 
   const startListening = useCallback(() => {
-    if (!mountedRef.current || isCompleteRef.current) return
+    if (!mountedRef.current) return
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor) {
       console.error('[voice] SpeechRecognition not supported in this browser')
@@ -424,6 +438,16 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     recognitionRef.current = null
     setOrbTracked('idle')
   }, [setOrbTracked])
+
+  // One-time cleanup: completed onboarding used to re-persist voice history and broke the next visit.
+  useEffect(() => {
+    if (!isComplete) return
+    try {
+      sessionStorage.removeItem(VOICE_HISTORY_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [isComplete])
 
   useEffect(() => {
     mountedRef.current = true

@@ -33,6 +33,7 @@ function VoiceMode() {
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();
 
   const handleOrbTap = () => {
+    if (isComplete) return;
     if (orbState === "idle") {
       startListening();
     } else if (orbState === "listening") {
@@ -67,10 +68,20 @@ function VoiceMode() {
       >
         {/* Responsive orb size */}
         <div className="block sm:hidden">
-          <PathwaysOrb state={orbState} onTap={handleOrbTap} size="160px" />
+          <PathwaysOrb
+            state={orbState}
+            onTap={handleOrbTap}
+            size="160px"
+            statusLabels={isComplete ? { idle: "All set" } : undefined}
+          />
         </div>
         <div className="hidden sm:block">
-          <PathwaysOrb state={orbState} onTap={handleOrbTap} size="220px" />
+          <PathwaysOrb
+            state={orbState}
+            onTap={handleOrbTap}
+            size="220px"
+            statusLabels={isComplete ? { idle: "All set" } : undefined}
+          />
         </div>
 
         {/* Error message */}

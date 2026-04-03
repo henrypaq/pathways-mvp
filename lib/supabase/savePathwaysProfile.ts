@@ -14,7 +14,14 @@ export async function savePathwaysProfileToSupabase(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[savePathwaysProfileToSupabase] Skipped: no Supabase session. Sign in to persist profile to the database.',
+      )
+    }
+    return
+  }
 
   const { error } = await supabase.from('profiles').upsert(
     { user_id: user.id, data: profile },
