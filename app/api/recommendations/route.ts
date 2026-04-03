@@ -245,12 +245,17 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    console.log('[recommendations] stage 1: generating queries')
     const queries = await generateSearchQueries(profile)
+    console.log('[recommendations] stage 2: retrieving chunks for', queries.length, 'queries')
     const chunks = await retrieveChunks(queries)
+    console.log('[recommendations] stage 3: synthesizing from', chunks.length, 'chunks')
     const result = await synthesizeRecommendations(profile, chunks)
+    console.log('[recommendations] done')
     return Response.json(result)
   } catch (err) {
-    console.error('[recommendations] error:', err)
-    return Response.json({ error: 'Failed to generate recommendations' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[recommendations] error:', msg)
+    return Response.json({ error: msg }, { status: 500 })
   }
 }
