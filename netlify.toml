@@ -8,8 +8,3 @@
   # These are public client config (inlined into JS), not credentials. Netlify's
   # secrets scanner matches their values against the repo/bundle and would fail the build.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_API_URL,NEXT_PUBLIC_ONBOARDING_DONE_KEY,NEXT_PUBLIC_PROFILE_KEY"
-
-[functions]
-  # Extend serverless function timeout to the Pro plan maximum (26s).
-  # The RAG pipeline (Haiku query gen + embeddings + Haiku synthesis) runs in ~10-15s.
-  timeout = 26
