@@ -31,6 +31,12 @@ export interface PathwaysProfile {
     selfAssessment?: 'native' | 'fluent' | 'intermediate' | 'basic'
   } | null
   years_of_experience?: '0' | '1' | '2' | '3' | '4' | '5+' | null
+  /** Simplified NOC TEER proxy: professional/managerial (TEER 0-2), skilled trade/technical (TEER 3), or other/service (TEER 4-5) */
+  occupation_skill_level?: 'professional' | 'skilled_trade' | 'other'
+  /** Spouse or common-law partner is a Canadian citizen or permanent resident */
+  has_canadian_sponsor?: boolean
+  /** Parent, sibling, or adult child who is a Canadian citizen or permanent resident */
+  has_canadian_relative?: boolean
 }
 
 export interface ConversationTurn {
@@ -110,4 +116,7 @@ export const PROFILE_FIELD_LABELS: Record<keyof PathwaysProfile, string> = {
   language_scores: 'Language scores',
   language_test: 'Language test',
   years_of_experience: 'Years of experience',
+  occupation_skill_level: 'Occupation skill level',
+  has_canadian_sponsor: 'Canadian sponsor (spouse/partner)',
+  has_canadian_relative: 'Canadian relative',
 }
