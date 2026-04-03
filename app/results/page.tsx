@@ -187,10 +187,35 @@ export default function ResultsPage() {
         body: JSON.stringify({ profile: p }),
       })
       if (!res.ok) {
+        // Non-2xx before streaming started — read as JSON error
         const err = await res.json().catch(() => ({}))
         throw new Error((err as { error?: string }).error ?? `Request failed: ${res.status}`)
       }
-      const data = (await res.json()) as RecommendationsResult
+
+      // Read the streaming response — server sends raw JSON text in chunks
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+
+      if (accumulated.includes('__STREAM_ERROR__') || accumulated.includes('__PARSE_ERROR__')) {
+        throw new Error('Failed to generate recommendations')
+      }
+
+      // Extract generatedAt from the appended marker, then parse the JSON
+      const generatedAt = accumulated.match(/__GENERATED_AT__(.+)$/)?.[1] ?? new Date().toISOString()
+      const jsonText = accumulated
+        .replace(/\n__GENERATED_AT__.+$/, '')
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim()
+
+      const parsed = JSON.parse(jsonText) as Omit<RecommendationsResult, 'generatedAt'>
+      const data: RecommendationsResult = { ...parsed, generatedAt }
       saveResultToCache(profileHash, data)
       setResult(data)
       setSelectedPathwayId(data.topPathwayId ?? data.pathways[0]?.id ?? null)
