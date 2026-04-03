@@ -78,20 +78,23 @@ export function useTextOnboarding(): UseTextOnboardingReturn {
         fullText += decoder.decode(value, { stream: true })
       }
 
-      // Parse PROFILE_DELTA tokens
       const deltaMatches = [...fullText.matchAll(/PROFILE_DELTA:(\{[^}]*\})/g)]
+      let mergedProfile: Partial<PathwaysProfile> = { ...profileRef.current }
       for (const match of deltaMatches) {
         try {
           const delta = JSON.parse(match[1]) as Partial<PathwaysProfile>
-          setProfile((prev) => {
-            const updated = { ...prev, ...delta }
-            profileRef.current = updated
-            localStorage.setItem(PROFILE_KEY, JSON.stringify(updated))
-            return updated
-          })
+          mergedProfile = { ...mergedProfile, ...delta }
         } catch (e) {
           console.error('[text] delta parse error:', e)
         }
+      }
+      if (deltaMatches.length > 0) {
+        profileRef.current = mergedProfile
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(mergedProfile))
+        setProfile(mergedProfile)
+        void savePathwaysProfileToSupabase(mergedProfile).catch((err) => {
+          console.error('[text] Incremental profile sync to Supabase failed:', err)
+        })
       }
 
       // Check completion

@@ -238,6 +238,9 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         profileRef.current = mergedProfile
         localStorage.setItem(PROFILE_KEY, JSON.stringify(mergedProfile))
         setProfile(mergedProfile)
+        void savePathwaysProfileToSupabase(mergedProfile).catch((err) => {
+          console.error('[voice] Incremental profile sync to Supabase failed:', err)
+        })
       }
 
       let completedNow = false
