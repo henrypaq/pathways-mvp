@@ -48,8 +48,9 @@ export default async function DashboardPage() {
 
   const profileData = (profile.data ?? {}) as ProfileData
   const result = recommendation.result as RecommendationsResult
+  const pathways = result.pathways ?? []
   const topPathway =
-    result.pathways.find((p) => p.id === result.topPathwayId) ?? result.pathways[0]
+    pathways.find((p) => p.id === result.topPathwayId) ?? pathways[0]
   const roadmapProgress = profileData.roadmap_progress ?? {}
 
   return (
@@ -167,10 +168,10 @@ export default async function DashboardPage() {
               </div>
 
               {/* Why it matches */}
-              {topPathway.matchReasons.length > 0 && (
+              {(topPathway.matchReasons ?? []).length > 0 && (
                 <Section title="Why you qualify">
                   <ul className="space-y-1.5">
-                    {topPathway.matchReasons.map((r, i) => (
+                    {(topPathway.matchReasons ?? []).map((r, i) => (
                       <li key={i} className="flex items-start gap-2 text-[13px] text-[#525252]">
                         <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#1D9E75] flex-shrink-0" />
                         {r}
@@ -181,10 +182,10 @@ export default async function DashboardPage() {
               )}
 
               {/* Requirements */}
-              {topPathway.requirements.length > 0 && (
+              {(topPathway.requirements ?? []).length > 0 && (
                 <Section title="Key requirements">
                   <ul className="space-y-1.5">
-                    {topPathway.requirements.map((r, i) => (
+                    {(topPathway.requirements ?? []).map((r, i) => (
                       <li key={i} className="flex items-start gap-2 text-[13px] text-[#525252]">
                         <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#534AB7] flex-shrink-0" />
                         {r}
@@ -213,10 +214,10 @@ export default async function DashboardPage() {
               </div>
 
               {/* Sources */}
-              {topPathway.sources.length > 0 && (
+              {(topPathway.sources ?? []).length > 0 && (
                 <Section title="Sources">
                   <div className="flex flex-wrap gap-2">
-                    {topPathway.sources.map((s, i) => (
+                    {(topPathway.sources ?? []).map((s, i) => (
                       <a
                         key={i}
                         href={s.url}
@@ -248,7 +249,7 @@ export default async function DashboardPage() {
             Your Roadmap
           </h2>
           <p className="text-[11px] text-[#A3A3A3] mb-4">Click a step to update its status</p>
-          <RoadmapChecklist steps={result.roadmap} initialProgress={roadmapProgress} />
+          <RoadmapChecklist steps={result.roadmap ?? []} initialProgress={roadmapProgress} />
         </aside>
       </div>
     </div>

@@ -155,7 +155,7 @@ export default function ResultsPage() {
             if (existing && isLessThan24HoursOld(existing.created_at as string)) {
               const cached = existing.result as RecommendationsResult
               setResult(cached)
-              setSelectedPathwayId(cached.topPathwayId ?? cached.pathways[0]?.id ?? null)
+              setSelectedPathwayId(cached.topPathwayId ?? cached.pathways?.[0]?.id ?? null)
               setLoading(false)
               return
             }
@@ -192,7 +192,7 @@ export default function ResultsPage() {
       }
 
       setResult(data)
-      setSelectedPathwayId(data.topPathwayId ?? data.pathways[0]?.id ?? null)
+      setSelectedPathwayId(data.topPathwayId ?? data.pathways?.[0]?.id ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -214,7 +214,7 @@ export default function ResultsPage() {
     fetchRecommendations(p)
   }, [loadProfile, fetchRecommendations])
 
-  const selectedPathway = result?.pathways.find((p) => p.id === selectedPathwayId) ?? result?.pathways[0] ?? null
+  const selectedPathway = result?.pathways?.find((p) => p.id === selectedPathwayId) ?? result?.pathways?.[0] ?? null
   const roadmapSteps = result?.roadmap ?? []
 
   return (
@@ -239,7 +239,7 @@ export default function ResultsPage() {
         <div className="flex items-center gap-3 sm:gap-4">
           {result && (
             <span className="hidden sm:inline text-[11px] text-[#A3A3A3]">
-              Based on {result.sources.length} official IRCC sources
+              Based on {(result.sources ?? []).length} official IRCC sources
             </span>
           )}
           {profile && !loading && (
@@ -299,10 +299,10 @@ export default function ResultsPage() {
                 {/* Pathway match cards */}
                 <div className="mb-2">
                   <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">
-                    Top Matches — {result.pathways.length} pathways
+                    Top Matches — {(result.pathways ?? []).length} pathways
                   </h2>
                   <div className="space-y-4">
-                    {result.pathways.map((pathway, i) => (
+                    {(result.pathways ?? []).map((pathway, i) => (
                       <PathwayMatchCard
                         key={pathway.id}
                         pathway={pathway}
@@ -315,7 +315,7 @@ export default function ResultsPage() {
                 </div>
 
                 {/* Sources section */}
-                {result.sources.length > 0 && (
+                {(result.sources ?? []).length > 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -326,7 +326,7 @@ export default function ResultsPage() {
                       Official Sources
                     </h2>
                     <div className="flex flex-wrap gap-2">
-                      {result.sources.map((s, i) => (
+                      {(result.sources ?? []).map((s, i) => (
                         <a
                           key={i}
                           href={s.url}
