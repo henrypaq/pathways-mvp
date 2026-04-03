@@ -6,7 +6,7 @@ import { ChevronDown, Check, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useOnboardingStore } from '@/lib/onboardingStore'
 import type { PathwaysProfile } from '@/types/voice'
-import { createClient } from '@/lib/supabase/client'
+import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 import { CountrySelect } from '@/components/ui/CountrySelect'
 import { DateOfBirthPicker } from '@/components/ui/DateOfBirthPicker'
 
@@ -331,11 +331,7 @@ export function ManualProfileForm() {
     // Wrapped in try/catch — if the user is not authenticated or the insert fails,
     // the localStorage save above still preserves the profile for the /results page.
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase.from('profiles').insert({ user_id: user.id, data: profile })
-      }
+      await savePathwaysProfileToSupabase(profile)
     } catch (err) {
       console.error('Failed to save profile to Supabase:', err)
     }

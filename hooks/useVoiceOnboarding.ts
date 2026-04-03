@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react
 import type { OrbState, PathwaysProfile, ConversationTurn } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
 import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
-import { createClient } from '@/lib/supabase/client'
+import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
@@ -353,11 +353,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         // Save profile to Supabase then trigger scoring (fire-and-forget, same as ManualProfileForm)
         void (async () => {
           try {
-            const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-              await supabase.from('profiles').insert({ user_id: user.id, data: profileRef.current })
-            }
+            await savePathwaysProfileToSupabase(profileRef.current)
           } catch (err) {
             console.error('[voice] Failed to save profile to Supabase:', err)
           }

@@ -2,8 +2,12 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { PathwaysProfile } from '@/types/voice'
 import type { RecommendationsResult, PathwayMatch, RecommendedRoadmapStep, SourceCitation } from '@/lib/types'
 
+/** Netlify/Vercel: allow long enough for Claude + parallel vector search (no per-search Claude when API supports include_answer). */
+export const maxDuration = 60
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+/** FastAPI base URL (no trailing slash). Used for POST /search → Supabase pgvector RAG. */
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 // Step 1 — Ask Claude to generate targeted search queries from the profile
 async function generateSearchQueries(profile: Partial<PathwaysProfile>): Promise<string[]> {
@@ -52,41 +56,102 @@ Return ONLY a JSON array of 5 strings, nothing else. Example:
   ]
 }
 
-// Step 2 — Retrieve chunks from the FastAPI RAG backend
-async function retrieveChunks(queries: string[]): Promise<Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string }>> {
-  const results = await Promise.allSettled(
-    queries.map((q) =>
-      fetch(`${BASE_URL}/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, n_results: 4 }),
-      }).then((r) => r.json()),
-    ),
+type SearchHit = {
+  document: string
+  url: string
+  display_name: string
+  similarity: number
+  scraped_at: string | null
+}
+
+// Step 2 — Retrieve chunks from FastAPI /search (OpenAI query embed + Supabase pgvector by default)
+async function retrieveChunks(queries: string[]): Promise<SearchHit[]> {
+  const searchUrl = `${BASE_URL}/search`
+  const errors: string[] = []
+
+  const perQuery = await Promise.all(
+    queries.map(async (q) => {
+      try {
+        const res = await fetch(searchUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: q,
+            n_results: 4,
+            include_answer: false,
+          }),
+        })
+        const raw = await res.text()
+        let data: unknown
+        try {
+          data = JSON.parse(raw)
+        } catch {
+          errors.push(`POST /search: non-JSON body (HTTP ${res.status})`)
+          return [] as SearchHit[]
+        }
+        const body = data as {
+          results?: unknown
+          detail?: unknown
+          error?: unknown
+        }
+        if (!res.ok) {
+          const detail =
+            typeof body.detail === 'string'
+              ? body.detail
+              : body.detail != null
+                ? JSON.stringify(body.detail)
+                : body.error != null
+                  ? String(body.error)
+                  : raw.slice(0, 240)
+          errors.push(`POST /search HTTP ${res.status}: ${detail}`)
+          return [] as SearchHit[]
+        }
+        if (!Array.isArray(body.results)) {
+          errors.push('POST /search: response missing results[] (expected SearchResponse)')
+          return [] as SearchHit[]
+        }
+        return body.results as SearchHit[]
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : 'fetch failed')
+        return [] as SearchHit[]
+      }
+    }),
   )
 
-  const all: Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string }> = []
+  const all: SearchHit[] = []
   const seenUrls = new Set<string>()
 
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue
-    const data = result.value
-    if (!Array.isArray(data.results)) continue
-    for (const chunk of data.results) {
-      if (!seenUrls.has(chunk.url)) {
-        seenUrls.add(chunk.url)
-        all.push(chunk)
-      }
+  for (const rows of perQuery) {
+    for (const chunk of rows) {
+      if (!chunk?.url || seenUrls.has(chunk.url)) continue
+      seenUrls.add(chunk.url)
+      all.push({
+        document: chunk.document ?? '',
+        url: chunk.url,
+        display_name: chunk.display_name ?? '',
+        similarity: typeof chunk.similarity === 'number' ? chunk.similarity : 0,
+        scraped_at: chunk.scraped_at ?? null,
+      })
     }
   }
 
-  // Sort by similarity descending, keep top 15
-  return all.sort((a, b) => b.similarity - a.similarity).slice(0, 15)
+  const deduped = all.sort((a, b) => b.similarity - a.similarity).slice(0, 15)
+
+  if (deduped.length === 0 && queries.length > 0) {
+    const hint =
+      errors.length > 0
+        ? errors.slice(0, 4).join(' | ')
+        : `Check NEXT_PUBLIC_API_URL (${BASE_URL}), Python API is running, OPENAI_API_KEY + SUPABASE_DB_URL on the API, and knowledge_chunks has rows.`
+    throw new Error(`Vector search returned no results. ${hint}`)
+  }
+
+  return deduped
 }
 
 // Step 3 — Claude synthesizes structured recommendations from profile + chunks
 async function synthesizeRecommendations(
   profile: Partial<PathwaysProfile>,
-  chunks: Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string }>,
+  chunks: Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string | null }>,
 ): Promise<RecommendationsResult> {
   const profileText = Object.entries(profile)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')

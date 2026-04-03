@@ -17,6 +17,8 @@ class SearchRequest(BaseModel):
     question: str
     profile: UserProfile | None = None
     n_results: int = 5
+    # When False, skip the extra Claude answer call (vector results only). Used by /api/recommendations.
+    include_answer: bool = True
 
 
 class AnalyzeRequest(BaseModel):

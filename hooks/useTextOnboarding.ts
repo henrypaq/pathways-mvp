@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { PathwaysProfile, ConversationTurn, ChatMessage } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS } from '@/types/voice'
-import { createClient } from '@/lib/supabase/client'
+import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 
 // Reuses /api/voice/chat — the endpoint is mode-agnostic (no TTS, no audio in chat path)
 const CHAT_API = '/api/voice/chat'
@@ -102,11 +102,7 @@ export function useTextOnboarding(): UseTextOnboardingReturn {
         // Save profile to Supabase then trigger scoring (fire-and-forget, same as ManualProfileForm)
         void (async () => {
           try {
-            const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-              await supabase.from('profiles').insert({ user_id: user.id, data: profileRef.current })
-            }
+            await savePathwaysProfileToSupabase(profileRef.current)
           } catch (err) {
             console.error('[text] Failed to save profile to Supabase:', err)
           }

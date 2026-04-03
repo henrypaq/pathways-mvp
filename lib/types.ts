@@ -21,6 +21,8 @@ export interface SearchRequest {
   question: string
   profile?: UserProfile
   n_results?: number
+  /** When false, Python API returns chunks only (no per-query Claude call). */
+  include_answer?: boolean
 }
 
 export interface SearchResult {
