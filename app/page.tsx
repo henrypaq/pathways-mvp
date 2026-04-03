@@ -1,8 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Shield, BookOpen, FileSearch, ChevronRight } from "lucide-react";
 import { AuthNav } from "@/components/auth/AuthNav";
+import { createClient } from "@/lib/supabase/client";
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -29,6 +32,36 @@ const features = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleBeginClick = async () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("completeness_score")
+        .eq("user_id", user.id)
+        .single();
+      if (!profile || profile.completeness_score < 0.5) {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      router.push("/onboarding");
+    } finally {
+      setIsNavigating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
@@ -86,16 +119,16 @@ export default function LandingPage() {
           </motion.p>
 
           <motion.div variants={fadeUp}>
-            <Link href="/onboarding">
-              <motion.span
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 bg-[#534AB7] text-white text-base font-medium px-8 py-4 rounded-full shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors duration-200 cursor-pointer"
-              >
-                Begin your journey
-                <ArrowRight size={18} />
-              </motion.span>
-            </Link>
+            <motion.button
+              onClick={handleBeginClick}
+              disabled={isNavigating}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-2 bg-[#534AB7] text-white text-base font-medium px-8 py-4 rounded-full shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors duration-200 cursor-pointer disabled:opacity-75"
+            >
+              {isNavigating ? "Loading..." : "Begin your journey"}
+              <ArrowRight size={18} />
+            </motion.button>
           </motion.div>
         </motion.div>
 
@@ -147,15 +180,14 @@ export default function LandingPage() {
           transition={{ duration: 0.6 }}
         >
           <p className="text-sm text-[#A3A3A3] mb-4">Ready to find your pathway?</p>
-          <Link href="/onboarding">
-            <motion.span
-              whileHover={{ gap: "10px" }}
-              className="inline-flex items-center gap-2 text-sm font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors cursor-pointer"
-            >
-              Get started for free
-              <ChevronRight size={16} />
-            </motion.span>
-          </Link>
+          <motion.button
+            onClick={handleBeginClick}
+            whileHover={{ gap: "10px" }}
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors cursor-pointer"
+          >
+            Get started for free
+            <ChevronRight size={16} />
+          </motion.button>
         </motion.div>
       </section>
     </div>

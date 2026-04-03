@@ -2,6 +2,22 @@ import { createClient as createServerSupabaseClient } from '@/lib/supabase/serve
 import { createClient } from '@supabase/supabase-js'
 import type { PathwaysProfile } from '@/types/voice'
 
+function calculateCompleteness(profile: Partial<PathwaysProfile>): number {
+  const fields: (keyof PathwaysProfile)[] = [
+    'nationality',
+    'destination_country',
+    'purpose',
+    'occupation',
+    'timeline',
+    'family_situation',
+  ]
+  const hasLanguage = Boolean(profile.language_scores || profile.language_test)
+  const presentCount = fields.filter(
+    (f) => profile[f] != null && profile[f] !== '',
+  ).length
+  return (presentCount + (hasLanguage ? 1 : 0)) / 7
+}
+
 /**
  * POST /api/profile/save
  * Body: { profile: Partial<PathwaysProfile> }
@@ -42,9 +58,11 @@ export async function POST(request: Request): Promise<Response> {
     ? createClient(supabaseUrl, serviceKey)
     : serverClient  // fall back to session-scoped client
 
+  const completeness_score = calculateCompleteness(profile)
+
   const { error: updateError, data: updatedRows } = await adminClient
     .from('profiles')
-    .update({ data: profile })
+    .update({ data: profile, completeness_score })
     .eq('user_id', user.id)
     .select('id')
 
@@ -57,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
     // Row missing (trigger not applied) — insert as fallback
     const { error: insertError } = await adminClient
       .from('profiles')
-      .insert({ user_id: user.id, data: profile })
+      .insert({ user_id: user.id, data: profile, completeness_score })
     if (insertError) {
       console.error('[profile/save] insert error:', insertError.message)
       return Response.json({ error: insertError.message }, { status: 500 })

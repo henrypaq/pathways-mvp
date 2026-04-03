@@ -11,45 +11,12 @@ import { PathwayMatchCard } from '@/components/results/PathwayMatchCard'
 import { PersonalizedRoadmap } from '@/components/results/PersonalizedRoadmap'
 import { AuthNav } from '@/components/auth/AuthNav'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
+import { createClient } from '@/lib/supabase/client'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
-const RESULTS_CACHE_KEY = 'pathways_results_cache'
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
-type ResultsCache = {
-  profileHash: string
-  result: RecommendationsResult
-  cachedAt: number
-}
-
-function hashProfile(p: Partial<PathwaysProfile>): string {
-  const sorted = Object.fromEntries(
-    Object.entries(p)
-      .filter(([, v]) => v != null && v !== '')
-      .sort(([a], [b]) => a.localeCompare(b))
-  )
-  return JSON.stringify(sorted)
-}
-
-function loadCachedResult(profileHash: string): RecommendationsResult | null {
-  try {
-    const raw = localStorage.getItem(RESULTS_CACHE_KEY)
-    if (!raw) return null
-    const cache = JSON.parse(raw) as ResultsCache
-    if (cache.profileHash !== profileHash) return null
-    if (Date.now() - cache.cachedAt > CACHE_TTL_MS) return null
-    return cache.result
-  } catch {
-    return null
-  }
-}
-
-function saveResultToCache(profileHash: string, result: RecommendationsResult): void {
-  try {
-    localStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify({ profileHash, result, cachedAt: Date.now() }))
-  } catch {
-    // Ignore storage quota errors
-  }
+function isLessThan24HoursOld(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000
 }
 
 function LoadingState() {
@@ -141,18 +108,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 export default function ResultsPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<Partial<PathwaysProfile> | null>(null)
-  const [result, setResult] = useState<RecommendationsResult | null>(() => {
-    // Eagerly load from cache on first render to avoid a loading flash
-    if (typeof window === 'undefined') return null
-    try {
-      const raw = localStorage.getItem(PROFILE_KEY)
-      if (!raw) return null
-      const p = JSON.parse(raw) as Partial<PathwaysProfile>
-      return loadCachedResult(hashProfile(p))
-    } catch {
-      return null
-    }
-  })
+  const [result, setResult] = useState<RecommendationsResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPathwayId, setSelectedPathwayId] = useState<string | null>(null)
@@ -168,18 +124,48 @@ export default function ResultsPage() {
   }, [])
 
   const fetchRecommendations = useCallback(async (p: Partial<PathwaysProfile>, force = false) => {
-    const profileHash = hashProfile(p)
-    if (!force) {
-      const cached = loadCachedResult(profileHash)
-      if (cached) {
-        setResult(cached)
-        setSelectedPathwayId(cached.topPathwayId ?? cached.pathways[0]?.id ?? null)
-        setLoading(false)
-        return
-      }
-    }
     setLoading(true)
     setError(null)
+
+    let supabaseProfileId: string | null = null
+
+    // Check Supabase cache (or fetch profileId for saving after pipeline)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: dbProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (dbProfile) {
+          supabaseProfileId = dbProfile.id
+
+          if (!force) {
+            const { data: existing } = await supabase
+              .from('recommendations')
+              .select('result, created_at')
+              .eq('profile_id', dbProfile.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single()
+
+            if (existing && isLessThan24HoursOld(existing.created_at as string)) {
+              const cached = existing.result as RecommendationsResult
+              setResult(cached)
+              setSelectedPathwayId(cached.topPathwayId ?? cached.pathways[0]?.id ?? null)
+              setLoading(false)
+              return
+            }
+          }
+        }
+      }
+    } catch {
+      // Auth/DB lookup failed — fall through to pipeline
+    }
+
     try {
       const res = await fetch('/api/recommendations', {
         method: 'POST',
@@ -192,7 +178,19 @@ export default function ResultsPage() {
       }
       const data = (await res.json()) as RecommendationsResult & { error?: string }
       if (data.error) throw new Error(data.error)
-      saveResultToCache(profileHash, data)
+
+      // Persist to Supabase
+      if (supabaseProfileId) {
+        try {
+          const supabase = createClient()
+          await supabase
+            .from('recommendations')
+            .insert({ profile_id: supabaseProfileId, result: data })
+        } catch {
+          // Best-effort; don't fail if save fails
+        }
+      }
+
       setResult(data)
       setSelectedPathwayId(data.topPathwayId ?? data.pathways[0]?.id ?? null)
     } catch (err) {
@@ -213,12 +211,6 @@ export default function ResultsPage() {
     // Sync localStorage profile to Supabase in the background (backfills if onboarding
     // completed before the profile save was working, and keeps data current).
     void savePathwaysProfileToSupabase(p).catch(() => { /* best-effort */ })
-    // result was eagerly populated from cache in useState initializer — skip the API call
-    if (result) {
-      setSelectedPathwayId(result.topPathwayId ?? result.pathways[0]?.id ?? null)
-      setLoading(false)
-      return
-    }
     fetchRecommendations(p)
   }, [loadProfile, fetchRecommendations])
 
