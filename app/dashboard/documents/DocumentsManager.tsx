@@ -103,13 +103,18 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
     setUploading(true)
     try {
       const filePath = `${userId}/${selectedType}/${Date.now()}_${file.name}`
+      console.log('Upload path:', filePath)
+      console.log('Upload params:', { bucket: 'documents', path: filePath, fileType: file.type, fileSize: file.size })
 
       const { data: storageData, error: storageError } = await supabase.storage
         .from('documents')
         .upload(filePath, file)
 
       if (storageError) {
-        setUploadError(storageError.message)
+        console.error('Storage error full object:', JSON.stringify(storageError))
+        console.error('Storage error message:', storageError.message)
+        console.error('Storage error status:', (storageError as { status?: number }).status)
+        setUploadError(`Storage upload failed: ${storageError.message}`)
         return
       }
 
