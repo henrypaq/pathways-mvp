@@ -10,9 +10,8 @@ import { ModeSelect } from "@/components/onboarding/ModeSelect";
 import { Onboarding1 } from "@/components/onboarding/Onboarding1";
 import { AuthNav } from "@/components/auth/AuthNav";
 
-// Steps 2–7 are prototype screens never reached in the live flow.
-// The real flow: ModeSelect (step 0) → Onboarding1 (step 1) → router.push('/results').
-// Guard below redirects any stale step >= 2 back to /results.
+// Flow: ModeSelect (step 0) → Onboarding1 (step 1) → /results.
+// Guard redirects stale localStorage step >= 2 to /results.
 
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'

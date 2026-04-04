@@ -1,15 +1,9 @@
 /**
- * api.ts — The ONLY file that calls the backend.
- *
- * SHARED CONTRACT — coordinate with Developer A before adding or changing functions here.
- * No component should ever call fetch() directly.
+ * Shared FastAPI client (analyze, health).
+ * Vector search for recommendations runs via `app/api/recommendations` → POST /search.
  */
 
-import type {
-  UserProfile,
-  SearchResponse,
-  AnalyzeResponse,
-} from "@/lib/types";
+import type { UserProfile, AnalyzeResponse } from "@/lib/types";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -22,24 +16,6 @@ class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
-}
-
-export async function searchPathways(
-  question: string,
-  profile?: UserProfile,
-  n_results = 5,
-): Promise<SearchResponse> {
-  const res = await fetch(`${BASE_URL}/search`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, profile, n_results }),
-  });
-
-  if (!res.ok) {
-    throw new ApiError(res.status, `Search failed: ${res.statusText}`);
-  }
-
-  return res.json() as Promise<SearchResponse>;
 }
 
 export async function analyzeDocument(
