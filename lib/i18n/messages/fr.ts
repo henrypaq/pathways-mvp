@@ -5,6 +5,8 @@ export const frMessages: Record<MessageKey, string> = {
   // ── Navigation ────────────────────────────────────────────────────────────
   'nav.brand': 'Pathways',
   'nav.home': 'Accueil',
+  'nav.account': 'Mon compte',
+  'nav.signIn': 'Se connecter',
 
   // ── Login / auth ─────────────────────────���────────────────────────────────
   'login.title': 'Connexion \u00e0 Pathways',
@@ -312,6 +314,18 @@ export const frMessages: Record<MessageKey, string> = {
   'docs.required.police_certificate.hint': 'De chaque pays o\u00f9 vous avez v\u00e9cu 6\u00a0mois ou plus',
   'docs.required.photos': 'Photos de passeport',
   'docs.required.photos.hint': '2\u00a0photos identiques r\u00e9pondant aux sp\u00e9cifications de l\u2019IRCC',
+
+  // ── Account page ──────────────────────────────────────────────────────────
+  'account.title': 'Mon compte',
+  'account.email': 'Courriel',
+  'account.memberSince': 'Membre depuis',
+  'account.continueJourney': 'Continuer votre parcours',
+  'account.resetTitle': 'R\u00e9initialiser Pathways',
+  'account.resetDesc': 'Effacez votre profil et vos recommandations et recommencez l\u2019int\u00e9gration depuis le d\u00e9but.',
+  'account.savedNote': 'Vos r\u00e9ponses sont enregistr\u00e9es sur votre profil Pathways.',
+  'account.defaultName': 'Membre Pathways',
+  'account.signOut': 'Se d\u00e9connecter',
+  'account.signingOut': 'D\u00e9connexion\u2026',
 
   // ── Start over button ────────────────────────────────────────────────��────
   'startover.confirm.title': 'Effacer toutes les donn\u00e9es\u00a0?',

@@ -5,8 +5,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseBrowserConfigured } from "@/lib/supabase/config";
 import type { User } from "@supabase/supabase-js";
+import { useI18n } from "@/context/I18nContext";
 
 export function AuthNav() {
+  const { t } = useI18n()
   const [user, setUser] = useState<User | null | undefined>(() =>
     isSupabaseBrowserConfigured() ? undefined : null,
   );
@@ -41,7 +43,7 @@ export function AuthNav() {
         href="/account"
         className="text-sm text-[#737373] hover:text-[#171717] transition-colors duration-200"
       >
-        Account
+        {t('nav.account')}
       </Link>
     );
   }
@@ -51,7 +53,7 @@ export function AuthNav() {
       href="/login"
       className="text-sm text-[#737373] hover:text-[#171717] transition-colors duration-200"
     >
-      Sign in
+      {t('nav.signIn')}
     </Link>
   );
 }
