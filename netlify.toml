@@ -8,3 +8,5 @@
   # These are public client config (inlined into JS), not credentials. Netlify's
   # secrets scanner matches their values against the repo/bundle and would fail the build.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_API_URL,NEXT_PUBLIC_ONBOARDING_DONE_KEY,NEXT_PUBLIC_PROFILE_KEY"
+  # Local IDE/assistant config must not block deploys if present in a fork/branch.
+  SECRETS_SCAN_OMIT_PATHS = ".claude/**"

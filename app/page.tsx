@@ -50,7 +50,7 @@ export default function LandingPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login");
+        router.push("/login?next=/onboarding");
         return;
       }
       const { data: profile } = await supabase
