@@ -437,7 +437,6 @@ export function ApplicationWorkspace({
       current: activeKey === 'base:submission',
     })
     return entries
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, completedSteps, docCount, roadmapProgress, roadmapSteps, submissionProgress, t])
 
   const handleNext = useCallback(() => {
