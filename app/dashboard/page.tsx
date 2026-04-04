@@ -11,6 +11,7 @@ import type { StepStatus } from './actions'
 
 type ProfileData = Partial<PathwaysProfile> & {
   roadmap_progress?: Record<string, StepStatus>
+  submission_progress?: Record<string, StepStatus>
 }
 
 export default async function DashboardPage({
@@ -84,6 +85,7 @@ export default async function DashboardPage({
     : { data: [] }
 
   const roadmapProgress = profileData.roadmap_progress ?? {}
+  const submissionProgress = profileData.submission_progress ?? {}
 
   if (!selectedPathway) redirect('/results')
 
@@ -117,6 +119,7 @@ export default async function DashboardPage({
         pathway={selectedPathway}
         roadmapSteps={result.roadmap ?? []}
         roadmapProgress={roadmapProgress}
+        submissionProgress={submissionProgress}
         caseId={userCase?.id ?? null}
         userId={user.id}
         initialDocuments={(documents ?? []) as Parameters<typeof ApplicationWorkspace>[0]['initialDocuments']}

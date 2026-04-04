@@ -10,6 +10,7 @@ import type { PathwayMatch, RecommendedRoadmapStep } from '@/lib/types'
 import type { PathwaysProfile } from '@/types/voice'
 import { DocumentsStep } from './DocumentsStep'
 import { RoadmapStepPage } from './RoadmapStepPage'
+import { SubmissionStep } from './SubmissionStep'
 import type { StepStatus } from './actions'
 
 interface DocumentRow {
@@ -26,6 +27,7 @@ interface Props {
   pathway: PathwayMatch
   roadmapSteps: RecommendedRoadmapStep[]
   roadmapProgress: Record<string, StepStatus>
+  submissionProgress: Record<string, StepStatus>
   caseId: string | null
   userId: string
   initialDocuments: DocumentRow[]
@@ -33,8 +35,9 @@ interface Props {
 }
 
 const BASE_STEP_DEFS = [
-  { id: 'pathway' as const, label: 'Pathway Overview' },
-  { id: 'documents' as const, label: 'Documents' },
+  { id: 'pathway' as const,    label: 'Pathway Overview' },
+  { id: 'documents' as const,  label: 'Documents' },
+  { id: 'submission' as const, label: 'Submit Application' },
 ] as const
 type BaseStepId = (typeof BASE_STEP_DEFS)[number]['id']
 
@@ -342,11 +345,13 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, ana
 // ── Main workspace ─────────────────────────────────────────────────────────────
 
 export function ApplicationWorkspace({
-  pathway, roadmapSteps, roadmapProgress: initialProgress, caseId, userId, initialDocuments, profileData,
+  pathway, roadmapSteps, roadmapProgress: initialProgress, submissionProgress: initialSubmissionProgress,
+  caseId, userId, initialDocuments, profileData,
 }: Props) {
   const [location, setLocation] = useState<WorkspaceLocation>({ kind: 'base', id: 'pathway' })
   const [completedSteps, setCompletedSteps] = useState<Set<BaseStepId>>(new Set())
   const [roadmapProgress, setRoadmapProgress] = useState(initialProgress)
+  const [submissionProgress, setSubmissionProgress] = useState(initialSubmissionProgress)
   const [docCount, setDocCount] = useState(initialDocuments.length)
   const [uploadedDocTypes, setUploadedDocTypes] = useState<Set<string>>(
     new Set(initialDocuments.map((d) => d.type).filter(Boolean) as string[])
@@ -363,6 +368,7 @@ export function ApplicationWorkspace({
       { kind: 'base', id: 'pathway' },
       { kind: 'base', id: 'documents' },
       ...tail,
+      { kind: 'base', id: 'submission' },
     ]
   }, [roadmapSteps])
 
@@ -377,9 +383,12 @@ export function ApplicationWorkspace({
   const progressPct = totalFlat > 0 ? (doneFlat / totalFlat) * 100 : 0
 
   const stepsDone = roadmapSteps.filter((s) => roadmapProgress[s.id] === 'done').length
+  const submissionDone = Object.values(submissionProgress).filter((v) => v === 'done').length
+  const SUBMISSION_TOTAL = 9
   const score = Math.round(
-    Math.min(docCount / 7, 1) * 50 +
-    (roadmapSteps.length > 0 ? (stepsDone / roadmapSteps.length) * 50 : 0)
+    Math.min(docCount / 7, 1) * 40 +
+    (roadmapSteps.length > 0 ? (stepsDone / roadmapSteps.length) * 30 : 0) +
+    (submissionDone / SUBMISSION_TOTAL) * 30
   )
 
   const isCurrentComplete =
@@ -410,8 +419,17 @@ export function ApplicationWorkspace({
         current: activeKey === key,
       })
     }
+    // Submission always last
+    const submDone = Object.values(submissionProgress).filter((v) => v === 'done').length
+    entries.push({
+      key: 'base:submission',
+      label: 'Submit Application',
+      sub: submDone > 0 ? `${submDone} / 9 steps done` : undefined,
+      complete: submDone === 9,
+      current: activeKey === 'base:submission',
+    })
     return entries
-  }, [activeKey, completedSteps, docCount, roadmapProgress, roadmapSteps])
+  }, [activeKey, completedSteps, docCount, roadmapProgress, roadmapSteps, submissionProgress])
 
   const handleNext = useCallback(() => {
     const idx = flatLocations.findIndex((l) => locationKey(l) === activeKey)
@@ -436,6 +454,10 @@ export function ApplicationWorkspace({
 
   const handleRoadmapSaved = useCallback((stepId: string, status: StepStatus) => {
     setRoadmapProgress((prev) => ({ ...prev, [stepId]: status }))
+  }, [])
+
+  const handleSubmissionSaved = useCallback((stepId: string, status: StepStatus) => {
+    setSubmissionProgress((prev) => ({ ...prev, [stepId]: status }))
   }, [])
 
   const currentRoadmapStep =
@@ -510,6 +532,15 @@ export function ApplicationWorkspace({
                       Unable to load document manager — your session may have expired. Please refresh the page.
                     </div>
                   )
+                )}
+
+                {location.kind === 'base' && location.id === 'submission' && (
+                  <SubmissionStep
+                    uploadedDocTypes={uploadedDocTypes}
+                    docCount={docCount}
+                    initialProgress={submissionProgress}
+                    onProgressChange={handleSubmissionSaved}
+                  />
                 )}
 
                 {location.kind === 'roadmap' && currentRoadmapStep && (

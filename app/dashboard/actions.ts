@@ -31,6 +31,31 @@ export async function updateRoadmapStep(stepId: string, status: StepStatus): Pro
   revalidatePath('/dashboard')
 }
 
+export async function updateSubmissionStep(stepId: string, status: StepStatus): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, data')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!profile) return
+
+  const data = (profile.data ?? {}) as Record<string, unknown>
+  const current = (data.submission_progress ?? {}) as Record<string, StepStatus>
+  const updated = { ...current, [stepId]: status }
+
+  await supabase
+    .from('profiles')
+    .update({ data: { ...data, submission_progress: updated } })
+    .eq('user_id', user.id)
+
+  revalidatePath('/dashboard')
+}
+
 export async function startOver(): Promise<{ ok: boolean }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
