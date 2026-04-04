@@ -4,9 +4,10 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckCircle2, Clock, DollarSign, ExternalLink,
-  ChevronRight, ShieldCheck, AlertCircle, ArrowLeft,
+  ChevronRight, ShieldCheck, AlertCircle, ArrowLeft, Loader2,
 } from 'lucide-react'
 import type { PathwayMatch, RecommendedRoadmapStep } from '@/lib/types'
+import type { PathwaysProfile } from '@/types/voice'
 import { DocumentsStep } from './DocumentsStep'
 import { RoadmapStepPage } from './RoadmapStepPage'
 import type { StepStatus } from './actions'
@@ -28,6 +29,7 @@ interface Props {
   caseId: string | null
   userId: string
   initialDocuments: DocumentRow[]
+  profileData?: Partial<PathwaysProfile>
 }
 
 const BASE_STEP_DEFS = [
@@ -204,14 +206,15 @@ interface FloatingChecklistProps {
   score: number
   requirements: string[]
   uploadedDocTypes: Set<string>
+  analyzingDocTypes: Set<string>
   onNavigate: (key: string) => void
 }
 
-function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onNavigate }: FloatingChecklistProps) {
+function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, analyzingDocTypes, onNavigate }: FloatingChecklistProps) {
   const scoreColor = score >= 70 ? '#1D9E75' : score >= 40 ? '#F59E0B' : '#534AB7'
   const metCount = requirements.filter((req) => {
     const s = getSuggestedDoc(req)
-    return s ? uploadedDocTypes.has(s.docType) : false
+    return s ? uploadedDocTypes.has(s.docType) && !analyzingDocTypes.has(s.docType) : false
   }).length
 
   return (
@@ -258,16 +261,21 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onN
           <div className="flex flex-col gap-0.5 mb-4">
             {requirements.map((req, i) => {
               const suggestion = getSuggestedDoc(req)
-              const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
+              const isAnalyzing = suggestion ? analyzingDocTypes.has(suggestion.docType) : false
+              const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) && !isAnalyzing : false
               return (
                 <div key={i} className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg">
-                  <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                    isMet ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
-                  }`}>
-                    {isMet && (
-                      <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
-                        <path d="M0.5 2l1.5 1.5 3.5-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                  <div className="mt-0.5 w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center">
+                    {isAnalyzing ? (
+                      <Loader2 size={12} className="text-[#534AB7] animate-spin" />
+                    ) : isMet ? (
+                      <div className="w-3.5 h-3.5 rounded-full bg-[#1D9E75] flex items-center justify-center">
+                        <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
+                          <path d="M0.5 2l1.5 1.5 3.5-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-[#D4D4D4]" />
                     )}
                   </div>
                   <span style={{ fontSize: '11px', color: isMet ? '#A3A3A3' : '#525252', lineHeight: '1.4' }}>{req}</span>
@@ -334,7 +342,7 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onN
 // ── Main workspace ─────────────────────────────────────────────────────────────
 
 export function ApplicationWorkspace({
-  pathway, roadmapSteps, roadmapProgress: initialProgress, caseId, userId, initialDocuments,
+  pathway, roadmapSteps, roadmapProgress: initialProgress, caseId, userId, initialDocuments, profileData,
 }: Props) {
   const [location, setLocation] = useState<WorkspaceLocation>({ kind: 'base', id: 'pathway' })
   const [completedSteps, setCompletedSteps] = useState<Set<BaseStepId>>(new Set())
@@ -343,6 +351,7 @@ export function ApplicationWorkspace({
   const [uploadedDocTypes, setUploadedDocTypes] = useState<Set<string>>(
     new Set(initialDocuments.map((d) => d.type).filter(Boolean) as string[])
   )
+  const [analyzingDocTypes, setAnalyzingDocTypes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setRoadmapProgress(initialProgress)
@@ -491,8 +500,10 @@ export function ApplicationWorkspace({
                       initialDocuments={initialDocuments}
                       caseId={caseId}
                       userId={userId}
+                      profile={profileData}
                       onCountChange={setDocCount}
                       onTypesChange={setUploadedDocTypes}
+                      onAnalyzingTypesChange={setAnalyzingDocTypes}
                     />
                   ) : (
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-[13px] text-red-700">
@@ -566,6 +577,7 @@ export function ApplicationWorkspace({
             score={score}
             requirements={pathway.requirements}
             uploadedDocTypes={uploadedDocTypes}
+            analyzingDocTypes={analyzingDocTypes}
             onNavigate={handleNavigate}
           />
         </aside>

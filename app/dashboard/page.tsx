@@ -120,6 +120,7 @@ export default async function DashboardPage({
         caseId={userCase?.id ?? null}
         userId={user.id}
         initialDocuments={(documents ?? []) as Parameters<typeof ApplicationWorkspace>[0]['initialDocuments']}
+        profileData={profileData}
       />
     </PageSurface>
   )

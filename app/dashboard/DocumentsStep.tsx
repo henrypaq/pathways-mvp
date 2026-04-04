@@ -4,8 +4,13 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import {
-  CheckCircle2, Loader2, AlertTriangle, Upload, X, Sparkles,
+  CheckCircle2, Loader2, AlertTriangle, Upload, X, Sparkles, Wand2,
 } from 'lucide-react'
+import type { PathwaysProfile } from '@/types/voice'
+import { GenerateDocumentModal } from './GenerateDocumentModal'
+
+// Document types that can be AI-generated
+const GENERATABLE = new Set(['employment_letter'])
 
 interface DocumentRow {
   id: string
@@ -104,11 +109,13 @@ interface Props {
   initialDocuments: DocumentRow[]
   caseId: string | null
   userId: string
+  profile?: Partial<PathwaysProfile>
   onCountChange: (n: number) => void
   onTypesChange: (types: Set<string>) => void
+  onAnalyzingTypesChange?: (types: Set<string>) => void
 }
 
-export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange, onTypesChange }: Props) {
+export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCountChange, onTypesChange, onAnalyzingTypesChange }: Props) {
   const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments)
   const [selectedType, setSelectedType] = useState('')
   const [dragOver, setDragOver] = useState(false)
@@ -116,6 +123,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set())
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadZoneRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -126,6 +134,18 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
     onCountChange(documents.length)
     onTypesChange(new Set(documents.map((d) => d.type).filter(Boolean) as string[]))
   }, [documents, onCountChange, onTypesChange])
+
+  // Surface which doc types are currently being analyzed to the parent (for sidebar requirement ticking)
+  useEffect(() => {
+    if (!onAnalyzingTypesChange) return
+    const types = new Set(
+      documents
+        .filter(d => analyzing.has(d.id))
+        .map(d => d.type)
+        .filter((t): t is string => !!t)
+    )
+    onAnalyzingTypesChange(types)
+  }, [analyzing, documents, onAnalyzingTypesChange])
 
   const scrollToUpload = (type: string) => {
     setSelectedType(type)
@@ -215,6 +235,12 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
     setDocuments((prev) => prev.filter((d) => d.id !== doc.id))
   }
 
+  function handleGenerated(doc: DocumentRow) {
+    setDocuments((prev) => [doc, ...prev])
+    setGenerateModalOpen(false)
+    void analyzeDocument(doc.id)
+  }
+
   const uploadedByType = new Map(documents.map((d) => [d.type ?? '', d]))
   const uploadedCount = REQUIRED_DOCS.filter((d) => uploadedByType.has(d.type)).length
 
@@ -294,12 +320,22 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
                             )}
                           </>
                         ) : (
-                          <button
-                            onClick={() => scrollToUpload(docSpec.type)}
-                            className="text-[11px] font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors px-2.5 py-1 rounded-full bg-[#EEEDFE] hover:bg-[#E0DEFF]"
-                          >
-                            Upload
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            {GENERATABLE.has(docSpec.type) && (
+                              <button
+                                onClick={() => setGenerateModalOpen(true)}
+                                className="flex items-center gap-1 text-[11px] font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors px-2.5 py-1 rounded-full border border-[#534AB7]/30 hover:bg-[#EEEDFE]"
+                              >
+                                <Wand2 size={10} /> Generate
+                              </button>
+                            )}
+                            <button
+                              onClick={() => scrollToUpload(docSpec.type)}
+                              className="text-[11px] font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors px-2.5 py-1 rounded-full bg-[#EEEDFE] hover:bg-[#E0DEFF]"
+                            >
+                              Upload
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -420,6 +456,17 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
           )}
         </div>
       </div>
+
+      {generateModalOpen && caseId && (
+        <GenerateDocumentModal
+          docType="employment_letter"
+          profile={profile}
+          userId={userId}
+          caseId={caseId}
+          onGenerated={handleGenerated}
+          onClose={() => setGenerateModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
