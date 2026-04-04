@@ -47,6 +47,46 @@ function loadProfileFromStorage(): Partial<PathwaysProfile> {
   }
 }
 
+// Fix 3: brace-counting extractor handles nested objects like
+// PROFILE_DELTA:{"language_test":{"taken":"yes"}}
+function extractProfileDeltas(text: string): Record<string, unknown>[] {
+  const results: Record<string, unknown>[] = []
+  const marker = 'PROFILE_DELTA:'
+  let searchFrom = 0
+
+  while (true) {
+    const markerIdx = text.indexOf(marker, searchFrom)
+    if (markerIdx === -1) break
+
+    const start = markerIdx + marker.length
+    if (text[start] !== '{') { searchFrom = start; continue }
+
+    let depth = 0
+    let end = start
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === '{') depth++
+      else if (text[i] === '}') {
+        depth--
+        if (depth === 0) { end = i + 1; break }
+      }
+    }
+
+    try {
+      const json = text.slice(start, end)
+      const parsed = JSON.parse(json)
+      if (typeof parsed === 'object' && parsed !== null) {
+        results.push(parsed as Record<string, unknown>)
+      }
+    } catch {
+      // Malformed delta — skip
+    }
+
+    searchFrom = end
+  }
+
+  return results
+}
+
 export interface UseVoiceOnboardingReturn {
   orbState: OrbState
   profile: Partial<PathwaysProfile>
@@ -120,52 +160,119 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     }
   }, [])
 
+  // Fix 2: MediaSource streaming path — audio starts playing as chunks arrive.
+  // Falls back to arrayBuffer if MediaSource is unavailable (e.g. older Safari).
   const playAudioResponse = useCallback(
     async (response: Response, signal: AbortSignal): Promise<void> => {
-      return new Promise((resolve) => {
-        let settled = false
-        const finish = () => {
-          if (settled) return
-          settled = true
+      if (
+        typeof MediaSource === 'undefined' ||
+        !MediaSource.isTypeSupported('audio/mpeg')
+      ) {
+        // Fallback: buffer the whole response before playing
+        return new Promise((resolve) => {
+          let settled = false
+          const finish = () => { if (settled) return; settled = true; resolve() }
+          if (!mountedRef.current || signal.aborted) { finish(); return }
+          void (async () => {
+            try {
+              const buffer = await response.arrayBuffer()
+              if (!mountedRef.current || signal.aborted) { finish(); return }
+              if (buffer.byteLength === 0) { console.warn('[voice] empty audio, skipping'); finish(); return }
+              const blob = new Blob([buffer], { type: 'audio/mpeg' })
+              const url = URL.createObjectURL(blob)
+              const audio = new Audio(url)
+              playingAudioRef.current = audio
+              const cleanup = () => {
+                URL.revokeObjectURL(url)
+                if (playingAudioRef.current === audio) playingAudioRef.current = null
+                finish()
+              }
+              audio.onended = cleanup
+              audio.onerror = cleanup
+              signal.addEventListener('abort', () => { audio.pause(); cleanup() }, { once: true })
+              audio.play().catch(cleanup)
+            } catch {
+              finish()
+            }
+          })()
+        })
+      }
+
+      // Streaming path via MediaSource
+      return new Promise<void>((resolve, reject) => {
+        if (!mountedRef.current || signal.aborted) { resolve(); return }
+
+        const mediaSource = new MediaSource()
+        const url = URL.createObjectURL(mediaSource)
+        const audio = new Audio(url)
+        playingAudioRef.current = audio
+
+        audio.onended = () => {
+          URL.revokeObjectURL(url)
+          if (playingAudioRef.current === audio) playingAudioRef.current = null
           resolve()
         }
-        if (!mountedRef.current || signal.aborted) {
-          finish()
-          return
+        audio.onerror = () => {
+          URL.revokeObjectURL(url)
+          if (playingAudioRef.current === audio) playingAudioRef.current = null
+          resolve() // resolve (not reject) so a TTS error doesn't kill the turn
         }
-        void (async () => {
+
+        signal.addEventListener('abort', () => {
+          try { audio.pause() } catch { /* ignore */ }
+          URL.revokeObjectURL(url)
+          if (playingAudioRef.current === audio) playingAudioRef.current = null
+          resolve()
+        }, { once: true })
+
+        mediaSource.addEventListener('sourceopen', () => {
+          let sourceBuffer: SourceBuffer
           try {
-            const buffer = await response.arrayBuffer()
-            if (!mountedRef.current || signal.aborted) {
-              finish()
-              return
-            }
-            if (buffer.byteLength === 0) {
-              console.warn('[voice] empty audio, skipping')
-              finish()
-              return
-            }
-            const blob = new Blob([buffer], { type: 'audio/mpeg' })
-            const url = URL.createObjectURL(blob)
-            const audio = new Audio(url)
-            playingAudioRef.current = audio
-            const cleanup = () => {
-              URL.revokeObjectURL(url)
-              if (playingAudioRef.current === audio) playingAudioRef.current = null
-              finish()
-            }
-            audio.onended = cleanup
-            audio.onerror = cleanup
-            const onAbort = () => {
-              audio.pause()
-              cleanup()
-            }
-            signal.addEventListener('abort', onAbort, { once: true })
-            audio.play().catch(cleanup)
-          } catch {
-            finish()
+            sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg')
+          } catch (err) {
+            reject(err)
+            return
           }
-        })()
+
+          const reader = response.body!.getReader()
+
+          const pump = async (): Promise<void> => {
+            try {
+              while (true) {
+                if (signal.aborted) {
+                  if (mediaSource.readyState === 'open') mediaSource.endOfStream()
+                  resolve()
+                  return
+                }
+                const { done, value } = await reader.read()
+                if (done) {
+                  if (sourceBuffer.updating) {
+                    await new Promise<void>(r =>
+                      sourceBuffer.addEventListener('updateend', () => r(), { once: true })
+                    )
+                  }
+                  if (mediaSource.readyState === 'open') mediaSource.endOfStream()
+                  return
+                }
+                if (sourceBuffer.updating) {
+                  await new Promise<void>(r =>
+                    sourceBuffer.addEventListener('updateend', () => r(), { once: true })
+                  )
+                }
+                sourceBuffer.appendBuffer(value)
+              }
+            } catch (err) {
+              if (!signal.aborted) reject(err)
+            }
+          }
+
+          void pump()
+          audio.play().catch((err) => {
+            // Autoplay blocked or other play error — resolve gracefully
+            console.warn('[voice] audio.play() failed:', err)
+            resolve()
+          })
+        }, { once: true })
       })
     },
     [],
@@ -211,7 +318,40 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       console.log('[voice] reading stream')
       const reader = chatRes.body.getReader()
       const decoder = new TextDecoder()
+
+      // Fix 1: two-phase streaming — collect fullText for PROFILE_DELTA extraction
+      // while firing TTS on each complete sentence as it arrives.
       let fullText = ''
+      let streamBuffer = ''
+      const ttsQueue: Promise<void>[] = []
+      const sentenceRegex = /[^.!?]*[.!?]+/g
+
+      // Fix 1: helper — cleans a sentence fragment and fires a speak request.
+      // Returns a Promise that resolves when that sentence's audio has finished playing.
+      const speakSentence = async (text: string, lang: string, signal: AbortSignal): Promise<void> => {
+        const clean = text
+          .replace(/PROFILE_DELTA:\{(?:[^{}]|\{[^{}]*\})*\}/g, '')
+          .replace(/ONBOARDING_COMPLETE/g, '')
+          .trim()
+        if (!clean) return
+        if (signal.aborted || !mountedRef.current) return
+        try {
+          const res = await fetch('/api/voice/speak', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: clean, lang: voiceLanguageFromLocale(lang as Parameters<typeof voiceLanguageFromLocale>[0]) }),
+            signal,
+          })
+          if (!res.ok) {
+            console.error('[voice] TTS failed:', res.status)
+            return
+          }
+          await playAudioResponse(res, signal)
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          console.error('[voice] speakSentence threw:', err)
+        }
+      }
 
       while (true) {
         if (ac.signal.aborted || !mountedRef.current) {
@@ -222,25 +362,45 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         if (done) break
         const chunk = decoder.decode(value, { stream: true })
         fullText += chunk
+        streamBuffer += chunk
         console.log('[voice] chunk received:', chunk)
+
+        // Extract complete sentences from the running buffer and fire TTS immediately
+        const sentences = streamBuffer.match(sentenceRegex)
+        if (sentences) {
+          const lastSentence = sentences[sentences.length - 1]
+          const lastIdx = streamBuffer.lastIndexOf(lastSentence)
+          streamBuffer = streamBuffer.slice(lastIdx + lastSentence.length)
+
+          for (const sentence of sentences) {
+            const trimmed = sentence.trim()
+            if (!trimmed) continue
+            if (ac.signal.aborted) break
+            // Switch orb to speaking on the first sentence queued
+            if (ttsQueue.length === 0) setOrbTracked('speaking')
+            ttsQueue.push(speakSentence(trimmed, languageRef.current, ac.signal))
+          }
+        }
+      }
+
+      // Flush any remaining text that never ended with punctuation
+      if (streamBuffer.trim() && !ac.signal.aborted) {
+        if (ttsQueue.length === 0) setOrbTracked('speaking')
+        ttsQueue.push(speakSentence(streamBuffer.trim(), languageRef.current, ac.signal))
       }
 
       if (!mountedRef.current || ac.signal.aborted) return
 
       console.log('[voice] stream complete, fullText:', fullText)
 
-      const deltaMatches = [...fullText.matchAll(/PROFILE_DELTA:(\{[^}]*\})/g)]
+      // PROFILE_DELTA extraction on the full response (Fix 3: brace-counting)
+      const deltas = extractProfileDeltas(fullText)
       let mergedProfile: Partial<PathwaysProfile> = { ...profileRef.current }
-      for (const match of deltaMatches) {
-        try {
-          const delta = JSON.parse(match[1]) as Partial<PathwaysProfile>
-          console.log('[voice] profile delta:', delta)
-          mergedProfile = { ...mergedProfile, ...delta }
-        } catch (e) {
-          console.error('[voice] delta parse error:', e)
-        }
+      for (const delta of deltas) {
+        console.log('[voice] profile delta:', delta)
+        mergedProfile = { ...mergedProfile, ...delta }
       }
-      if (deltaMatches.length > 0) {
+      if (deltas.length > 0) {
         const normalizedProfile = normalizeVoiceProfile(mergedProfile)
         profileRef.current = normalizedProfile
         localStorage.setItem(PROFILE_KEY, JSON.stringify(normalizedProfile))
@@ -276,13 +436,14 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         })()
       }
 
+      // Fix 3: updated clean regex handles nested braces
       const cleanText = fullText
-        .replace(/PROFILE_DELTA:\{[^}]*\}/g, '')
+        .replace(/PROFILE_DELTA:\{(?:[^{}]|\{[^{}]*\})*\}/g, '')
         .replace(/ONBOARDING_COMPLETE/g, '')
         .replace(/\n+/g, ' ')
         .trim()
 
-      console.log('[voice] clean text for TTS:', cleanText)
+      console.log('[voice] clean text for history:', cleanText)
 
       const assistantEntry: ConversationTurn = { role: 'assistant', content: cleanText }
       const updatedHistory =
@@ -302,32 +463,17 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
 
       if (!mountedRef.current || ac.signal.aborted) return
 
-      if (cleanText.length === 0) {
-        console.warn('[voice] empty clean text, skipping TTS')
-        setOrbTracked('idle')
-        return
+      // Await all queued TTS promises in order — sentences play sequentially
+      for (const p of ttsQueue) {
+        if (ac.signal.aborted || !mountedRef.current) break
+        await p
       }
 
-      setOrbTracked('speaking')
-
-      try {
-        const speakRes = await fetch('/api/voice/speak', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: ac.signal,
-          body: JSON.stringify({
-            text: cleanText,
-            lang: voiceLanguageFromLocale(languageRef.current),
-          }),
-        })
-        if (!speakRes.ok) {
-          console.error('[voice] TTS failed:', speakRes.status)
-        } else {
-          await playAudioResponse(speakRes, ac.signal)
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-        console.error('[voice] speak threw:', err)
+      // Edge case: Claude returned only tokens with no sentence-ending punctuation
+      // and the flush above didn't catch anything (e.g. empty or pure-token response)
+      if (ttsQueue.length === 0 && cleanText.length > 0 && !ac.signal.aborted) {
+        setOrbTracked('speaking')
+        await speakSentence(cleanText, languageRef.current, ac.signal)
       }
 
       if (!mountedRef.current || ac.signal.aborted) return

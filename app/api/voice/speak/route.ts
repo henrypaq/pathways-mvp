@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     const voiceId = VOICE_IDS[(lang as string) === 'fr' ? 'fr' : 'en']
 
-    // Strip control tokens before sending to ElevenLabs
+    // Safety strip — text should already be clean from the client
     const cleaned = text
       .replace(/PROFILE_DELTA:\{.*?\}/g, '')
       .replace(/ONBOARDING_COMPLETE/g, '')
