@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ExternalLink, MapPin, Briefcase, Globe, Clock, Users } from 'lucide-react'
+import { ExternalLink, MapPin, Briefcase, Globe, Clock, Users, Target } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { AuthNav } from '@/components/auth/AuthNav'
 import { StartOverButton } from './StartOverButton'
@@ -71,56 +71,44 @@ export default async function DashboardPage() {
       </div>
 
       {/* 3-column body */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-auto lg:overflow-hidden">
         {/* Left sidebar — profile summary */}
-        <aside className="w-60 flex-shrink-0 border-r border-[#E5E5E5] overflow-y-auto bg-white px-4 py-5">
+        <aside className="lg:w-60 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#E5E5E5] overflow-y-auto bg-white px-4 py-5">
           <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-4">
             Your Profile
           </h2>
 
           <div className="space-y-4">
-            {profileData.nationality && (
-              <ProfileField
-                icon={<Globe size={13} className="text-[#534AB7]" />}
-                label="Nationality"
-                value={profileData.nationality}
-              />
-            )}
-            {profileData.destination_country && (
-              <ProfileField
-                icon={<MapPin size={13} className="text-[#534AB7]" />}
-                label="Destination"
-                value={profileData.destination_country}
-              />
-            )}
-            {profileData.purpose && (
-              <ProfileField
-                icon={<Globe size={13} className="text-[#534AB7]" />}
-                label="Purpose"
-                value={profileData.purpose}
-              />
-            )}
-            {profileData.occupation && (
-              <ProfileField
-                icon={<Briefcase size={13} className="text-[#534AB7]" />}
-                label="Occupation"
-                value={profileData.occupation}
-              />
-            )}
-            {profileData.timeline && (
-              <ProfileField
-                icon={<Clock size={13} className="text-[#534AB7]" />}
-                label="Timeline"
-                value={profileData.timeline}
-              />
-            )}
-            {profileData.family_situation && (
-              <ProfileField
-                icon={<Users size={13} className="text-[#534AB7]" />}
-                label="Family"
-                value={profileData.family_situation}
-              />
-            )}
+            <ProfileField
+              icon={<Globe size={13} className="text-[#534AB7]" />}
+              label="Nationality"
+              value={profileData.nationality ?? null}
+            />
+            <ProfileField
+              icon={<MapPin size={13} className="text-[#534AB7]" />}
+              label="Destination"
+              value={profileData.destination_country ?? null}
+            />
+            <ProfileField
+              icon={<Target size={13} className="text-[#534AB7]" />}
+              label="Purpose"
+              value={profileData.purpose ?? null}
+            />
+            <ProfileField
+              icon={<Briefcase size={13} className="text-[#534AB7]" />}
+              label="Occupation"
+              value={profileData.occupation ?? null}
+            />
+            <ProfileField
+              icon={<Clock size={13} className="text-[#534AB7]" />}
+              label="Timeline"
+              value={profileData.timeline ?? null}
+            />
+            <ProfileField
+              icon={<Users size={13} className="text-[#534AB7]" />}
+              label="Family"
+              value={profileData.family_situation ?? null}
+            />
           </div>
 
           <div className="mt-6 pt-5 border-t border-[#F5F5F5] space-y-2">
@@ -256,7 +244,7 @@ export default async function DashboardPage() {
         </main>
 
         {/* Right aside — roadmap checklist */}
-        <aside className="w-72 flex-shrink-0 border-l border-[#E5E5E5] overflow-y-auto bg-white px-4 py-5">
+        <aside className="lg:w-72 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#E5E5E5] overflow-y-auto bg-white px-4 py-5">
           <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-1">
             Your Roadmap
           </h2>
@@ -275,14 +263,18 @@ function ProfileField({
 }: {
   icon: React.ReactNode
   label: string
-  value: string
+  value: string | null
 }) {
   return (
     <div className="flex items-start gap-2">
       <div className="mt-0.5 flex-shrink-0">{icon}</div>
       <div className="min-w-0">
         <p className="text-[10px] text-[#A3A3A3] uppercase tracking-wider">{label}</p>
-        <p className="text-[13px] text-[#171717] font-medium truncate">{value}</p>
+        {value ? (
+          <p className="text-[13px] text-[#171717] font-medium truncate">{value}</p>
+        ) : (
+          <p className="text-[13px] text-[#D4D4D4] italic">Not provided</p>
+        )}
       </div>
     </div>
   )

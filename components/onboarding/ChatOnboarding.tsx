@@ -190,24 +190,14 @@ export function ChatOnboarding() {
             display: 'flex',
             alignItems: 'flex-end',
             gap: '8px',
-            background: '#F5F5F5',
             borderRadius: '16px',
             padding: '10px 14px',
-            border: '1px solid transparent',
-            transition: 'border-color 0.2s, background 0.2s',
           }}
-          onFocus={(e) => {
-            const el = e.currentTarget as HTMLDivElement
-            el.style.borderColor = '#534AB7'
-            el.style.background = '#ffffff'
-          }}
-          onBlur={(e) => {
-            const el = e.currentTarget as HTMLDivElement
-            el.style.borderColor = 'transparent'
-            el.style.background = '#F5F5F5'
-          }}
+          className="bg-[#F5F5F5] border border-transparent focus-within:border-[#534AB7] focus-within:bg-white transition-colors duration-200"
         >
+          <label htmlFor="chat-input" className="sr-only">Type your answer</label>
           <textarea
+            id="chat-input"
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}

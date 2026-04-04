@@ -1,9 +1,10 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AuthNav } from '@/components/auth/AuthNav'
 import { StartOverButton } from '../StartOverButton'
 import { DocumentsManager } from './DocumentsManager'
+import { DashboardSubnav } from '@/components/dashboard/DashboardSubnav'
+import Link from 'next/link'
 
 export default async function DocumentsPage() {
   const supabase = await createClient()
@@ -66,33 +67,8 @@ export default async function DocumentsPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-60 flex-shrink-0 border-r border-[#E5E5E5] bg-white px-4 py-5">
-          <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-4">
-            Dashboard
-          </h2>
-          <nav className="space-y-0.5">
-            <Link
-              href="/dashboard"
-              className="block text-[13px] text-[#525252] hover:text-[#534AB7] py-1.5 transition-colors"
-            >
-              ← Overview
-            </Link>
-            <Link
-              href="/dashboard/profile"
-              className="block text-[13px] text-[#525252] hover:text-[#534AB7] py-1.5 px-2.5 transition-colors"
-            >
-              Edit Profile
-            </Link>
-            <Link
-              href="/dashboard/documents"
-              className="block text-[13px] font-medium text-[#534AB7] bg-[#EEEDFE] px-2.5 py-1.5 rounded-[6px]"
-            >
-              Documents
-            </Link>
-          </nav>
-        </aside>
+      <div className="flex-1 flex flex-col lg:flex-row overflow-auto lg:overflow-hidden">
+        <DashboardSubnav active="documents" />
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto px-6 py-5">

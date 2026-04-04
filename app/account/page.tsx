@@ -5,6 +5,7 @@ import { Calendar, Mail, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AccountBackButton } from "@/components/account/AccountBackButton";
+import type { PathwaysProfile } from "@/types/voice";
 
 export const metadata = {
   title: "Account — Pathways",
@@ -35,6 +36,19 @@ export default async function AccountPage() {
         day: "numeric",
       })
     : "—";
+
+  // Determine where "Continue your journey" should go
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("completeness_score, data")
+    .eq("user_id", user.id)
+    .single();
+
+  const completenessScore: number = profileRow?.completeness_score ?? 0;
+  const profileData = profileRow?.data as Partial<PathwaysProfile> | null;
+  const hasOnboardingDone = !!(profileData as Record<string, unknown> | null)?.onboarding_complete;
+  const isComplete = completenessScore >= 0.5 || hasOnboardingDone;
+  const continueHref = isComplete ? "/dashboard" : "/onboarding";
 
   return (
     <div className="fixed inset-0 flex flex-col bg-white">
@@ -95,26 +109,11 @@ export default async function AccountPage() {
                 <p className="text-sm text-[#171717]">{created}</p>
               </div>
             </div>
-            <div className="flex items-start gap-3 px-4 py-4">
-              <User
-                size={18}
-                className="text-[#A3A3A3] mt-0.5 shrink-0"
-                strokeWidth={1.75}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3] mb-0.5">
-                  User ID
-                </p>
-                <p className="text-xs font-mono text-[#525252] break-all leading-relaxed">
-                  {user.id}
-                </p>
-              </div>
-            </div>
           </div>
 
           <div className="space-y-3">
             <Link
-              href="/onboarding"
+              href={continueHref}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-[#534AB7] py-3.5 text-sm font-medium text-white shadow-lg shadow-[#534AB7]/15 hover:bg-[#3C3489] transition-colors"
             >
               Continue your journey
@@ -124,8 +123,7 @@ export default async function AccountPage() {
           </div>
 
           <p className="mt-10 text-center text-[11px] leading-relaxed text-[#A3A3A3]">
-            Onboarding answers may still be stored on this device until synced to
-            your Pathways profile in the database.
+            Your answers are saved to your Pathways profile.
           </p>
         </div>
       </main>

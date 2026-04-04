@@ -66,8 +66,22 @@ function VoiceMode() {
           gap: "24px",
         }}
       >
+        {/* Unsupported browser warning — shown ABOVE orb so it's seen before tapping */}
+        {!isSpeechSupported && (
+          <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-[10px] text-sm text-amber-700 text-center max-w-xs">
+            Voice mode requires Chrome or Edge. Please switch browsers or{" "}
+            <button
+              onClick={() => router.push("/onboarding")}
+              className="underline font-medium"
+            >
+              choose another mode
+            </button>
+            .
+          </div>
+        )}
+
         {/* Responsive orb size */}
-        <div className="block sm:hidden">
+        <div className={`block sm:hidden ${!isSpeechSupported ? "opacity-40 pointer-events-none" : ""}`}>
           <PathwaysOrb
             state={orbState}
             onTap={handleOrbTap}
@@ -75,7 +89,7 @@ function VoiceMode() {
             statusLabels={isComplete ? { idle: "All set" } : undefined}
           />
         </div>
-        <div className="hidden sm:block">
+        <div className={`hidden sm:block ${!isSpeechSupported ? "opacity-40 pointer-events-none" : ""}`}>
           <PathwaysOrb
             state={orbState}
             onTap={handleOrbTap}
@@ -83,6 +97,22 @@ function VoiceMode() {
             statusLabels={isComplete ? { idle: "All set" } : undefined}
           />
         </div>
+
+        {/* Persistent hint — always shown when speech is supported and not complete */}
+        {isSpeechSupported && !isComplete && !errorMessage && (
+          <p
+            style={{
+              fontSize: "12px",
+              color: "#525252",
+              textAlign: "center",
+              maxWidth: "320px",
+            }}
+          >
+            {orbState === "idle"
+              ? "Tap the orb to speak after Pathways finishes each message."
+              : "Tap again when you're ready to continue."}
+          </p>
+        )}
 
         {/* Error message */}
         <AnimatePresence>
@@ -129,30 +159,6 @@ function VoiceMode() {
             </motion.button>
           )}
         </AnimatePresence>
-
-        {/* Unsupported browser warning */}
-        {!isSpeechSupported && (
-          <p className="text-sm text-amber-600 text-center mt-2">
-            Voice mode requires Chrome or Edge. Please switch browsers.
-          </p>
-        )}
-
-        {isSpeechSupported &&
-          requiredFieldsRemaining.length === 6 &&
-          orbState === "idle" &&
-          !errorMessage &&
-          !isComplete && (
-          <p
-            style={{
-              fontSize: "12px",
-              color: "#525252",
-              textAlign: "center",
-              maxWidth: "320px",
-            }}
-          >
-            Tap the orb to speak after Pathways finishes each message.
-          </p>
-        )}
       </div>
 
       {/* Profile panel — hidden on mobile, shown beside orb on desktop */}

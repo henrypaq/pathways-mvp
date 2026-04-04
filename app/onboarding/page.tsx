@@ -8,19 +8,18 @@ import { useOnboardingStore } from "@/lib/onboardingStore";
 import { createClient } from "@/lib/supabase/client";
 import { ModeSelect } from "@/components/onboarding/ModeSelect";
 import { Onboarding1 } from "@/components/onboarding/Onboarding1";
-import { Onboarding2 } from "@/components/onboarding/Onboarding2";
-import { Onboarding3 } from "@/components/onboarding/Onboarding3";
-import { Onboarding4 } from "@/components/onboarding/Onboarding4";
-import { Onboarding5 } from "@/components/onboarding/Onboarding5";
-import { Onboarding6 } from "@/components/onboarding/Onboarding6";
-import { Onboarding7 } from "@/components/onboarding/Onboarding7";
 import { AuthNav } from "@/components/auth/AuthNav";
 
-const TOTAL_STEPS = 7; // steps 0..7
+// Steps 2–7 are prototype screens never reached in the live flow.
+// The real flow: ModeSelect (step 0) → Onboarding1 (step 1) → router.push('/results').
+// Guard below redirects any stale step >= 2 back to /results.
 
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const VOICE_HISTORY_KEY = 'pathways_voice_onboarding_history'
+
+// Real flow has 2 steps: 0 (mode select) and 1 (onboarding)
+const REAL_STEPS = 2;
 
 const slideVariants = {
   enter: (dir: number) => ({
@@ -38,7 +37,14 @@ export default function OnboardingPage() {
   const { currentStep, prevStep } = useOnboardingStore();
   const router = useRouter();
 
-  // Fix 2: Skip to /results only when BOTH Supabase AND localStorage agree onboarding is done.
+  // Guard: if somehow step >= 2 is reached, redirect to results
+  useEffect(() => {
+    if (currentStep >= 2) {
+      router.replace('/results');
+    }
+  }, [currentStep, router]);
+
+  // Skip to /results only when BOTH Supabase AND localStorage agree onboarding is done.
   // If Supabase says the profile is not complete (reset happened), clear stale localStorage keys
   // and do a hard replace so hooks re-initialise from clean storage.
   useEffect(() => {
@@ -79,15 +85,9 @@ export default function OnboardingPage() {
   const stepComponents = [
     <ModeSelect key="0" />,
     <Onboarding1 key="1" />,
-    <Onboarding2 key="2" />,
-    <Onboarding3 key="3" />,
-    <Onboarding4 key="4" />,
-    <Onboarding5 key="5" />,
-    <Onboarding6 key="6" />,
-    <Onboarding7 key="7" />,
   ];
 
-  const showBack = currentStep > 0 && currentStep < 7;
+  const showBack = currentStep > 0 && currentStep <= 1;
 
   return (
     <div className="fixed inset-0 bg-white flex flex-col">
@@ -114,7 +114,7 @@ export default function OnboardingPage() {
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-1.5">
-          {Array.from({ length: TOTAL_STEPS + 1 }).map((_, i) => (
+          {Array.from({ length: REAL_STEPS }).map((_, i) => (
             <div
               key={i}
               className={`rounded-full transition-all duration-300 ${
@@ -146,7 +146,7 @@ export default function OnboardingPage() {
             transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
             className="absolute inset-0"
           >
-            {stepComponents[currentStep]}
+            {stepComponents[Math.min(currentStep, 1)]}
           </motion.div>
         </AnimatePresence>
       </div>

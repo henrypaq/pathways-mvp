@@ -5,14 +5,16 @@ import { updateProfile, type ProfileEditData } from './actions'
 
 function Field({
   label,
+  id,
   children,
 }: {
   label: string
+  id: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="block text-[11px] text-[#A3A3A3] uppercase tracking-wider mb-1.5">
+      <label htmlFor={id} className="block text-[11px] text-[#A3A3A3] uppercase tracking-wider mb-1.5">
         {label}
       </label>
       {children}
@@ -38,15 +40,23 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 function Toggle({
+  id,
+  label,
   checked,
   onChange,
 }: {
+  id: string
+  label: string
   checked: boolean
   onChange: (v: boolean) => void
 }) {
   return (
     <button
+      id={id}
       type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-[#534AB7]' : 'bg-[#E5E5E5]'}`}
     >
@@ -91,8 +101,11 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
     spouse_will_accompany: (raw.spouse_will_accompany as boolean) ?? false,
   })
 
+  const [scoreError, setScoreError] = useState<string | null>(null)
+
   function set<K extends keyof ProfileEditData>(key: K, value: ProfileEditData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+    if (saved) setSaved(false)
   }
 
   function setLang(key: string, value: string) {
@@ -100,21 +113,45 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
       ...prev,
       language_scores: { ...prev.language_scores, [key]: value },
     }))
+    if (saved) setSaved(false)
   }
 
   const showSpouse =
     form.marital_status === 'Married' || form.marital_status === 'Common-law'
 
+  function validateScore(test: string, score: string): boolean {
+    if (!score) return true
+    const n = parseFloat(score)
+    if (isNaN(n)) return false
+    if (test === 'IELTS' || test === 'CELPIP') return n >= 0 && n <= 9
+    if (test === 'TOEFL') return n >= 0 && n <= 120
+    return true
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    setScoreError(null)
+
+    const englishTest = form.language_scores?.english_test ?? ''
+    const englishScore = form.language_scores?.english_score ?? ''
+    if (!validateScore(englishTest, englishScore)) {
+      setScoreError(
+        englishTest === 'IELTS' || englishTest === 'CELPIP'
+          ? 'Score must be between 0 and 9 for IELTS/CELPIP.'
+          : englishTest === 'TOEFL'
+          ? 'Score must be between 0 and 120 for TOEFL.'
+          : 'Enter a valid numeric score.'
+      )
+      return
+    }
+
     startTransition(async () => {
       const result = await updateProfile(form)
       if (result.error) {
         setError(result.error)
       } else {
         setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
       }
     })
   }
@@ -123,8 +160,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
     <form onSubmit={handleSubmit} className="max-w-2xl pb-6">
       <Card title="Personal Information">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Nationality">
+          <Field label="Nationality" id="field-nationality">
             <input
+              id="field-nationality"
               type="text"
               value={form.nationality ?? ''}
               onChange={(e) => set('nationality', e.target.value)}
@@ -132,8 +170,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
               className={inputClass}
             />
           </Field>
-          <Field label="Current Country">
+          <Field label="Current Country" id="field-current-country">
             <input
+              id="field-current-country"
               type="text"
               value={form.current_country ?? ''}
               onChange={(e) => set('current_country', e.target.value)}
@@ -143,8 +182,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
           </Field>
         </div>
 
-        <Field label="Destination Country">
+        <Field label="Destination Country" id="field-destination-country">
           <input
+            id="field-destination-country"
             type="text"
             value={form.destination_country ?? ''}
             onChange={(e) => set('destination_country', e.target.value)}
@@ -154,8 +194,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Purpose">
+          <Field label="Purpose" id="field-purpose">
             <select
+              id="field-purpose"
               value={form.purpose ?? ''}
               onChange={(e) => set('purpose', e.target.value)}
               className={selectClass}
@@ -169,8 +210,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
               <option>Digital Nomad</option>
             </select>
           </Field>
-          <Field label="Timeline">
+          <Field label="Timeline" id="field-timeline">
             <select
+              id="field-timeline"
               value={form.timeline ?? ''}
               onChange={(e) => set('timeline', e.target.value)}
               className={selectClass}
@@ -188,8 +230,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
 
       <Card title="Professional Information">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Occupation">
+          <Field label="Occupation" id="field-occupation">
             <input
+              id="field-occupation"
               type="text"
               value={form.occupation ?? ''}
               onChange={(e) => set('occupation', e.target.value)}
@@ -197,8 +240,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
               className={inputClass}
             />
           </Field>
-          <Field label="Education Level">
+          <Field label="Education Level" id="field-education-level">
             <select
+              id="field-education-level"
               value={form.education_level ?? ''}
               onChange={(e) => set('education_level', e.target.value)}
               className={selectClass}
@@ -214,8 +258,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Years of Experience">
+          <Field label="Years of Experience" id="field-years-of-experience">
             <input
+              id="field-years-of-experience"
               type="number"
               min={0}
               value={form.years_of_experience ?? ''}
@@ -224,8 +269,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
               className={inputClass}
             />
           </Field>
-          <Field label="Employer Country">
+          <Field label="Employer Country" id="field-employer-country">
             <input
+              id="field-employer-country"
               type="text"
               value={form.employer_country ?? ''}
               onChange={(e) => set('employer_country', e.target.value)}
@@ -238,8 +284,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
 
       <Card title="Language Scores">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="English Test">
+          <Field label="English Test" id="field-english-test">
             <select
+              id="field-english-test"
               value={form.language_scores?.english_test ?? ''}
               onChange={(e) => setLang('english_test', e.target.value)}
               className={selectClass}
@@ -251,20 +298,32 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
               <option>None</option>
             </select>
           </Field>
-          <Field label="English Score">
+          <Field label="English Score" id="field-english-score">
             <input
+              id="field-english-score"
               type="text"
               value={form.language_scores?.english_score ?? ''}
               onChange={(e) => setLang('english_score', e.target.value)}
-              placeholder="e.g. 7.5"
+              placeholder={
+                form.language_scores?.english_test === 'IELTS' || form.language_scores?.english_test === 'CELPIP'
+                  ? '0–9'
+                  : form.language_scores?.english_test === 'TOEFL'
+                  ? '0–120'
+                  : 'e.g. 7.5'
+              }
               className={inputClass}
             />
           </Field>
         </div>
 
+        {scoreError && (
+          <p className="text-[12px] text-[#DC2626]">{scoreError}</p>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
-          <Field label="French Test">
+          <Field label="French Test" id="field-french-test">
             <select
+              id="field-french-test"
               value={form.language_scores?.french_test ?? ''}
               onChange={(e) => setLang('french_test', e.target.value)}
               className={selectClass}
@@ -276,8 +335,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
               <option>None</option>
             </select>
           </Field>
-          <Field label="French Score">
+          <Field label="French Score" id="field-french-score">
             <input
+              id="field-french-score"
               type="text"
               value={form.language_scores?.french_score ?? ''}
               onChange={(e) => setLang('french_score', e.target.value)}
@@ -287,8 +347,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
           </Field>
         </div>
 
-        <Field label="Other Language">
+        <Field label="Other Language" id="field-other-language">
           <input
+            id="field-other-language"
             type="text"
             value={form.language_scores?.other_language ?? ''}
             onChange={(e) => setLang('other_language', e.target.value)}
@@ -299,8 +360,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
       </Card>
 
       <Card title="Family Situation">
-        <Field label="Marital Status">
+        <Field label="Marital Status" id="field-marital-status">
           <select
+            id="field-marital-status"
             value={form.marital_status ?? ''}
             onChange={(e) => set('marital_status', e.target.value)}
             className={selectClass}
@@ -315,16 +377,21 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
         </Field>
 
         <div className="flex items-center justify-between py-1">
-          <span className="text-[13px] text-[#171717]">Has dependants</span>
+          <label htmlFor="toggle-dependants" className="text-[13px] text-[#171717] cursor-pointer">
+            Has dependants
+          </label>
           <Toggle
+            id="toggle-dependants"
+            label="Has dependants"
             checked={form.has_dependants ?? false}
             onChange={(v) => set('has_dependants', v)}
           />
         </div>
 
         {form.has_dependants && (
-          <Field label="Number of Dependants">
+          <Field label="Number of Dependants" id="field-number-of-dependants">
             <input
+              id="field-number-of-dependants"
               type="number"
               min={0}
               value={form.number_of_dependants ?? ''}
@@ -339,8 +406,12 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
 
         {showSpouse && (
           <div className="flex items-center justify-between py-1">
-            <span className="text-[13px] text-[#171717]">Spouse will accompany</span>
+            <label htmlFor="toggle-spouse" className="text-[13px] text-[#171717] cursor-pointer">
+              Spouse will accompany
+            </label>
             <Toggle
+              id="toggle-spouse"
+              label="Spouse will accompany"
               checked={form.spouse_will_accompany ?? false}
               onChange={(v) => set('spouse_will_accompany', v)}
             />
@@ -351,7 +422,9 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
       <div className="mt-2">
         {error && <p className="text-[12px] text-[#DC2626] mb-3">{error}</p>}
         {saved && (
-          <p className="text-[12px] text-[#16A34A] mb-3">Profile updated</p>
+          <p className="text-[12px] text-[#16A34A] mb-3 flex items-center gap-1.5">
+            <span>✓</span> Profile saved
+          </p>
         )}
         <button
           type="submit"

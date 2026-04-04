@@ -54,7 +54,7 @@ export function AuthNav() {
   if (user === undefined) {
     return (
       <span
-        className="inline-block h-5 w-14 rounded bg-[#F5F5F5] animate-pulse"
+        className="inline-block h-5 w-20 rounded bg-[#F5F5F5] animate-pulse"
         aria-hidden
       />
     );
@@ -77,6 +77,13 @@ export function AuthNav() {
               className="block px-4 py-2 text-sm text-[#171717] hover:bg-[#FAFAFA] transition-colors"
             >
               Dashboard
+            </Link>
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-[#171717] hover:bg-[#FAFAFA] transition-colors"
+            >
+              Account
             </Link>
             <button
               onClick={handleSignOut}

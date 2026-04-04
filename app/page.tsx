@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Shield, BookOpen, FileSearch, ChevronRight } from "lucide-react";
+import { Loader2, Shield, BookOpen, FileSearch, ChevronRight } from "lucide-react";
 import { AuthNav } from "@/components/auth/AuthNav";
 import { createClient } from "@/lib/supabase/client";
 
@@ -34,6 +34,13 @@ const features = [
 export default function LandingPage() {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleBeginClick = async () => {
     if (isNavigating) return;
@@ -65,7 +72,11 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5">
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 transition-all duration-300 ${
+          scrolled ? "bg-white/90 backdrop-blur-sm shadow-sm" : ""
+        }`}
+      >
         <Link
           href="/"
           className="text-[15px] font-semibold tracking-tight text-[#171717] hover:text-[#534AB7] transition-colors duration-200"
@@ -122,12 +133,20 @@ export default function LandingPage() {
             <motion.button
               onClick={handleBeginClick}
               disabled={isNavigating}
+              aria-busy={isNavigating}
+              aria-live="polite"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="inline-flex items-center gap-2 bg-[#534AB7] text-white text-base font-medium px-8 py-4 rounded-full shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors duration-200 cursor-pointer disabled:opacity-75"
             >
-              {isNavigating ? "Loading..." : "Begin your journey"}
-              <ArrowRight size={18} />
+              {isNavigating ? (
+                <>
+                  Loading...
+                  <Loader2 size={18} className="animate-spin" />
+                </>
+              ) : (
+                "Begin your journey →"
+              )}
             </motion.button>
           </motion.div>
         </motion.div>
@@ -139,8 +158,8 @@ export default function LandingPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.6 }}
         >
-          <span className="text-xs text-[#D4D4D4]">Scroll to learn more</span>
-          <div className="w-px h-8 bg-gradient-to-b from-[#D4D4D4] to-transparent" />
+          <span className="text-xs text-[#A3A3A3]">Scroll to learn more</span>
+          <div className="w-px h-8 bg-gradient-to-b from-[#A3A3A3] to-transparent" />
         </motion.div>
       </section>
 
@@ -182,8 +201,10 @@ export default function LandingPage() {
           <p className="text-sm text-[#A3A3A3] mb-4">Ready to find your pathway?</p>
           <motion.button
             onClick={handleBeginClick}
-            whileHover={{ gap: "10px" }}
-            className="inline-flex items-center gap-2 text-sm font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors cursor-pointer"
+            disabled={isNavigating}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-flex items-center gap-2 border border-[#534AB7] text-[#534AB7] hover:bg-[#534AB7] hover:text-white text-sm font-medium px-6 py-2.5 rounded-full transition-colors cursor-pointer disabled:opacity-60"
           >
             Get started for free
             <ChevronRight size={16} />

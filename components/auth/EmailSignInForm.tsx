@@ -77,9 +77,15 @@ export function EmailSignInForm({ nextPath }: Props) {
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
-      <label className="block">
-        <span className="sr-only">Email</span>
+      <div>
+        <label
+          htmlFor="email-input"
+          className="block text-[13px] font-medium text-[#525252] mb-1.5"
+        >
+          Email address
+        </label>
         <input
+          id="email-input"
           type="email"
           name="email"
           autoComplete="email"
@@ -89,11 +95,11 @@ export function EmailSignInForm({ nextPath }: Props) {
           disabled={status === "sending"}
           className="w-full rounded-[10px] border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-[#171717] placeholder:text-[#A3A3A3] outline-none transition-shadow focus:border-[#534AB7]/40 focus:ring-2 focus:ring-[#534AB7]/15 disabled:opacity-60"
         />
-      </label>
+      </div>
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full rounded-full bg-[#534AB7] py-3 text-sm font-medium text-white shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors disabled:opacity-60"
+        className="w-full rounded-full bg-[#534AB7] py-3.5 text-sm font-medium text-white shadow-lg shadow-[#534AB7]/20 hover:bg-[#3C3489] transition-colors disabled:opacity-60"
       >
         {status === "sending" ? "Sending link…" : "Continue with email"}
       </button>

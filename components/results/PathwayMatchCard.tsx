@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react'
+import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, ChevronRight, ShieldCheck } from 'lucide-react'
 import type { PathwayMatch } from '@/lib/types'
 
 interface PathwayMatchCardProps {
@@ -30,7 +30,7 @@ function ScoreRing({ score }: { score: number }) {
 
   return (
     <div className="relative flex items-center justify-center w-20 h-20 flex-shrink-0">
-      <svg width="80" height="80" className="-rotate-90">
+      <svg width="80" height="80" className="-rotate-90" aria-label={`Match score: ${score}%`} role="img">
         <circle cx="40" cy="40" r={r} fill="none" stroke="#F5F5F5" strokeWidth="5" />
         <motion.circle
           cx="40"
@@ -159,7 +159,7 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
 
           {/* Next step */}
           <div className="flex items-start gap-1.5 p-2.5 bg-[#EEEDFE] rounded-[8px]">
-            <AlertCircle size={11} className="text-[#534AB7] mt-0.5 flex-shrink-0" />
+            <ChevronRight size={11} className="text-[#534AB7] mt-0.5 flex-shrink-0" />
             <p className="text-[11px] text-[#534AB7] font-medium leading-tight">{pathway.nextStep}</p>
           </div>
         </div>

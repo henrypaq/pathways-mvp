@@ -42,7 +42,7 @@ export default async function LoginPage({ searchParams }: Props) {
             Secure sign-in
           </div>
           <h1 className="text-[28px] md:text-[32px] font-semibold tracking-tight text-[#171717] leading-tight mb-2">
-            Welcome back
+            Sign in to Pathways
           </h1>
           <p className="text-[15px] text-[#737373] leading-relaxed">
             Sign in to save your profile and pick up your immigration journey on
@@ -70,6 +70,9 @@ export default async function LoginPage({ searchParams }: Props) {
             nextPath={next}
             className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-[#E5E5E5] bg-white px-6 py-3.5 text-sm font-medium text-[#171717] shadow-sm hover:border-[#D4D4D4] hover:bg-[#FAFAFA] transition-colors disabled:opacity-60"
           />
+          <p className="mt-4 text-center text-[12px] text-[#A3A3A3]">
+            We&apos;ll send you a sign-in link — no password needed.
+          </p>
 
           <p className="mt-8 text-center text-[12px] text-[#A3A3A3] leading-relaxed">
             By continuing, you agree to authentication and privacy practices

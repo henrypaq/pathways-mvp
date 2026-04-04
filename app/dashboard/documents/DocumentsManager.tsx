@@ -98,6 +98,7 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set())
   const [profileSuggestion, setProfileSuggestion] = useState<ProfileSuggestion | null>(null)
   const [profileApplied, setProfileApplied] = useState(false)
@@ -194,6 +195,7 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
 
   async function handleDelete(doc: Document) {
     setDeleteError(null)
+    setConfirmDeleteId(null)
     const { error: storageError } = await supabase.storage.from('documents').remove([doc.file_url])
     if (storageError) { setDeleteError(storageError.message); return }
     const { error: dbError } = await supabase.from('documents').delete().eq('id', doc.id)
@@ -298,9 +300,9 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
                   <p className="text-[11px] text-[#A3A3A3] mt-0.5">{doc.description}</p>
                 </div>
                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
-                  uploaded ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEE2E2] text-[#DC2626]'
+                  uploaded ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#F5F5F5] text-[#A3A3A3]'
                 }`}>
-                  {uploaded ? 'Uploaded' : 'Missing'}
+                  {uploaded ? 'Uploaded' : 'Not uploaded'}
                 </span>
               </div>
             )
@@ -327,12 +329,16 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
         </div>
 
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragOver={(e) => { e.preventDefault(); if (selectedType) setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-[10px] p-8 text-center cursor-pointer transition-colors ${
-            dragOver ? 'border-[#534AB7] bg-[#EEEDFE]' : 'border-[#E5E5E5] hover:border-[#534AB7]/50 hover:bg-[#FAFAFA]'
+          onClick={() => { if (selectedType) fileInputRef.current?.click() }}
+          className={`border-2 border-dashed rounded-[10px] p-8 text-center transition-colors ${
+            !selectedType
+              ? 'border-[#E5E5E5] opacity-50 cursor-not-allowed'
+              : dragOver
+              ? 'border-[#534AB7] bg-[#EEEDFE] cursor-pointer'
+              : 'border-[#E5E5E5] hover:border-[#534AB7]/50 hover:bg-[#FAFAFA] cursor-pointer'
           }`}
         >
           <div className="flex flex-col items-center gap-2">
@@ -424,13 +430,30 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
                       </p>
                     </div>
 
-                    {/* Delete */}
-                    <button
-                      onClick={() => void handleDelete(doc)}
-                      className="flex-shrink-0 text-[11px] text-[#DC2626] hover:text-[#B91C1C] transition-colors font-medium"
-                    >
-                      Delete
-                    </button>
+                    {/* Delete — two-step confirmation */}
+                    {confirmDeleteId === doc.id ? (
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => void handleDelete(doc)}
+                          className="text-[11px] text-white bg-[#DC2626] hover:bg-[#B91C1C] transition-colors font-medium px-2 py-1 rounded-md"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-[11px] text-[#A3A3A3] hover:text-[#525252] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(doc.id)}
+                        className="flex-shrink-0 text-[11px] text-[#A3A3A3] hover:text-[#DC2626] transition-colors font-medium"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               )

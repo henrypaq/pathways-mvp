@@ -13,7 +13,7 @@ import { DateOfBirthPicker } from '@/components/ui/DateOfBirthPicker'
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
 
-const PURPOSE_OPTIONS = ['Work', 'Study', 'Family', 'Asylum', 'Lifestyle'] as const
+const PURPOSE_OPTIONS = ['Work', 'Study', 'Family Reunification', 'Asylum/Refugee', 'Retirement', 'Digital Nomad'] as const
 const LANGUAGE_OPTIONS = ['None', 'Basic', 'Intermediate', 'Fluent', 'Native'] as const
 const TIMELINE_OPTIONS = ['ASAP', 'Within 3 months', 'Within 6 months', 'Within a year', 'Just exploring'] as const
 const EDUCATION_OPTIONS = ["High school", "Bachelor's", "Master's", "PhD", "Other"] as const
@@ -365,7 +365,7 @@ export function ManualProfileForm() {
     }
 
     setSaved(true)
-    setTimeout(() => router.push('/results'), 800)
+    router.push('/results')
   }
 
   return (
@@ -387,6 +387,7 @@ export function ManualProfileForm() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-[#171717]">Your immigration profile</h2>
             <p className="text-sm text-gray-400 mt-1">Fill in the details below and we&apos;ll find your best pathways.</p>
+            <p className="text-sm text-[#737373] mt-2">* Required fields</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -668,7 +669,7 @@ export function ManualProfileForm() {
                         : 'bg-[#E5E5E5] text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    Save my profile
+                    Find my pathways →
                   </motion.button>
                 )}
               </AnimatePresence>

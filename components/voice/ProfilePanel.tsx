@@ -44,7 +44,15 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
 
         {/* Progress bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div className="bg-gray-100" style={{ flex: 1, height: '4px', borderRadius: '999px', overflow: 'hidden' }}>
+          <div
+            className="bg-gray-100"
+            style={{ flex: 1, height: '4px', borderRadius: '999px', overflow: 'hidden' }}
+            role="progressbar"
+            aria-valuenow={Math.round(progressPct)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Profile completion"
+          >
             <motion.div
               animate={{ width: `${progressPct}%` }}
               transition={{ duration: 0.6, ease: 'easeOut' }}

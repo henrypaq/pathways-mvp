@@ -85,7 +85,7 @@ function LoadingState() {
   )
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({ onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
       <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
@@ -93,7 +93,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
       </div>
       <div>
         <h2 className="text-[16px] font-semibold text-[#171717] mb-1">Could not load recommendations</h2>
-        <p className="text-[13px] text-[#737373]">{message}</p>
+        <p className="text-[13px] text-[#737373]">We couldn&apos;t load your results. Please refresh the page or try again in a moment.</p>
       </div>
       <button
         onClick={onRetry}
@@ -134,18 +134,12 @@ export default function ResultsPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
-      // [LOG 1] Auth state
-      console.log('[results] [1] auth user:', user ? user.id : 'null (not authenticated)')
-
       if (user) {
         const { data: dbProfile } = await supabase
           .from('profiles')
           .select('id')
           .eq('user_id', user.id)
           .single()
-
-        // [LOG 2] Profile query result
-        console.log('[results] [2] dbProfile:', dbProfile ? `id=${dbProfile.id}` : 'null (no profile row)')
 
         if (dbProfile) {
           supabaseProfileId = dbProfile.id
@@ -159,38 +153,25 @@ export default function ResultsPage() {
               .limit(1)
               .single()
 
-            // [LOG 3] Cache check
-            const existingShape = existing
-              ? `found — created_at=${existing.created_at as string}, has profileSummary=${!!(existing.result as Record<string, unknown>)?.profileSummary}`
-              : 'null (no cached recommendation)'
-            console.log('[results] [3] recommendations cache:', existingShape)
-
             // Only use the cached row if it is a RAG result (has profileSummary).
             // The deterministic scorer (/api/recommendations/generate) inserts rows with
             // a different shape (ScoringResult) — those must not be used here.
             const isRagResult = !!(existing?.result as Record<string, unknown> | null)?.profileSummary
             if (existing && isRagResult && isLessThan24HoursOld(existing.created_at as string)) {
               const cached = existing.result as RecommendationsResult
-              console.log('[results] [3] using cached RAG result — skipping pipeline')
               setResult(cached)
               setSelectedPathwayId(cached.topPathwayId ?? cached.pathways?.[0]?.id ?? null)
               setLoading(false)
               return
             }
-            if (existing && !isRagResult) {
-              console.log('[results] [3] cached row is NOT a RAG result (deterministic scorer shape) — ignoring and running pipeline')
-            }
           }
         }
       }
-    } catch (e) {
+    } catch {
       // Auth/DB lookup failed — fall through to pipeline
-      console.log('[results] [3] Supabase cache check threw:', e instanceof Error ? e.message : e)
     }
 
     const requestBody = JSON.stringify({ profile: p })
-    // [LOG 4] Request body preview
-    console.log('[results] [4] calling /api/recommendations — body:', requestBody.slice(0, 300))
 
     try {
       const res = await fetch('/api/recommendations', {
@@ -199,11 +180,7 @@ export default function ResultsPage() {
         body: requestBody,
       })
 
-      // Read body as text so we can log it before parsing
       const responseText = await res.text()
-
-      // [LOG 5] Response
-      console.log('[results] [5] response status:', res.status, '— body preview:', responseText.replace(/^\s+/, '').slice(0, 200))
 
       if (!res.ok) {
         const errBody = JSON.parse(responseText.trim() || '{}') as { error?: string }
@@ -212,9 +189,6 @@ export default function ResultsPage() {
 
       const data = JSON.parse(responseText) as RecommendationsResult & { error?: string }
       if (data.error) throw new Error(data.error)
-
-      // [LOG 6] Before setting state
-      console.log('[results] [6] setting result — pathways:', (data.pathways ?? []).length, ', roadmap steps:', (data.roadmap ?? []).length, ', topPathwayId:', data.topPathwayId)
 
       // Persist to Supabase
       if (supabaseProfileId) {
@@ -231,7 +205,6 @@ export default function ResultsPage() {
       setResult(data)
       setSelectedPathwayId(data.topPathwayId ?? data.pathways?.[0]?.id ?? null)
     } catch (err) {
-      console.log('[results] [5/6] error in pipeline:', err instanceof Error ? err.message : err)
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
@@ -276,7 +249,7 @@ export default function ResultsPage() {
 
         <div className="flex items-center gap-3 sm:gap-4">
           {result && (
-            <span className="hidden sm:inline text-[11px] text-[#A3A3A3]">
+            <span className="text-[11px] text-[#A3A3A3]">
               Based on {(result.sources ?? []).length} official IRCC sources
             </span>
           )}
@@ -312,7 +285,7 @@ export default function ResultsPage() {
           ) : result ? (
             <motion.div
               key="results"
-              className="h-full flex gap-0 overflow-hidden"
+              className="h-full flex flex-col lg:flex-row gap-0 overflow-y-auto lg:overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4 }}
@@ -382,7 +355,7 @@ export default function ResultsPage() {
               </div>
 
               {/* Right panel — roadmap */}
-              <div className="w-80 flex-shrink-0 border-l border-[#E5E5E5] overflow-y-auto bg-white px-4 py-6">
+              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#E5E5E5] overflow-y-auto bg-white px-4 py-6">
                 {selectedPathway && roadmapSteps.length > 0 ? (
                   <motion.div
                     key={selectedPathwayId}
