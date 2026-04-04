@@ -465,7 +465,7 @@ export function ApplicationWorkspace({
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain bg-[#FAFAFA]">
         <div className="flex flex-col lg:flex-row lg:items-start gap-8 px-6 py-8 lg:px-8 pb-16">
         <div className="flex-1 min-w-0 w-full">
-          <div className="max-w-3xl mx-auto lg:mx-0 px-1 sm:px-2 md:px-4 py-8">
+          <div className="mx-auto w-full max-w-3xl px-1 sm:px-2 md:px-4 py-8">
             {/* Step header */}
             <div className="flex items-center gap-3 mb-7">
               <span className="w-7 h-7 rounded-full bg-[#534AB7] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">
