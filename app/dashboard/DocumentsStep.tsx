@@ -183,6 +183,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
   const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments)
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 })
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set())
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -279,17 +280,24 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
     if (!files.length) return
     setUploadError(null)
     setUploading(true)
+    setUploadProgress({ done: 0, total: files.length })
     try {
-      const results = await Promise.all(files.map(uploadFile))
-      const uploaded = results.filter((r): r is DocumentRow => r !== null)
-      if (uploaded.length > 0) {
-        setDocuments((prev) => [...uploaded, ...prev])
-        if (fileInputRef.current) fileInputRef.current.value = ''
-        // Analyze all in parallel
-        uploaded.forEach(doc => void analyzeDocument(doc.id))
+      // Upload sequentially so the progress counter is meaningful
+      const uploaded: DocumentRow[] = []
+      for (const file of files) {
+        const doc = await uploadFile(file)
+        if (doc) {
+          uploaded.push(doc)
+          setDocuments((prev) => [doc, ...prev])
+        }
+        setUploadProgress((p) => ({ ...p, done: p.done + 1 }))
       }
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      // Analyze all in parallel
+      uploaded.forEach(doc => void analyzeDocument(doc.id))
     } finally {
       setUploading(false)
+      setUploadProgress({ done: 0, total: 0 })
     }
   }
 
@@ -362,7 +370,20 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                 }
               </div>
               {uploading ? (
-                <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
+                <div className="flex flex-col items-center gap-2 w-full max-w-[200px]">
+                  <p className="text-[13px] font-medium text-[#534AB7]">
+                    {uploadProgress.total > 1
+                      ? `Uploading ${uploadProgress.done + 1} of ${uploadProgress.total}…`
+                      : 'Uploading…'}
+                  </p>
+                  <div className="w-full h-1 bg-[#E0DEFF] rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-[#534AB7] rounded-full"
+                      animate={{ width: uploadProgress.total > 0 ? `${((uploadProgress.done) / uploadProgress.total) * 100}%` : '30%' }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
               ) : (
                 <>
                   <p className="text-[13px] font-medium text-[#171717]">

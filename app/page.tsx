@@ -50,7 +50,15 @@ export default function LandingPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        // Not signed in — login page has language selector built in
         router.push("/login?next=/onboarding");
+        return;
+      }
+      // Check if language has been explicitly chosen
+      const hasLanguage = !!localStorage.getItem("pathways_preferred_language");
+      if (!hasLanguage) {
+        // Signed in but no language chosen — onboarding will show language screen first
+        router.push("/onboarding");
         return;
       }
       const { data: profile } = await supabase
