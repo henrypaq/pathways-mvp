@@ -258,10 +258,12 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         // Append a chunk, waiting for any previous update to finish first.
         // QuotaExceededError / InvalidStateError are caught per-chunk so one bad
         // chunk does not crash the entire sentence.
-        const appendChunk = async (chunk: Uint8Array) => {
+        const appendChunk = async (chunk: Uint8Array<ArrayBufferLike>) => {
           await waitForNotUpdating()
           try {
-            sourceBuffer.appendBuffer(chunk)
+            // Cast needed: stream reader returns Uint8Array<ArrayBufferLike> but
+            // appendBuffer's BufferSource param requires ArrayBuffer (not ArrayBufferLike).
+            sourceBuffer.appendBuffer(chunk as unknown as ArrayBuffer)
             await waitForNotUpdating()
           } catch (err) {
             console.warn('[audio] appendBuffer error:', err)
