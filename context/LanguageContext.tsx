@@ -22,6 +22,7 @@ interface LanguageContextValue {
   language: Language
   setLanguage: (lang: Language) => void
   isLanguageLocked: boolean
+  resetLanguage: () => void
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -165,8 +166,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  const resetLanguage = useCallback(() => {
+    let detected: Language = 'en'
+    try {
+      if (typeof navigator !== 'undefined') {
+        const nav = localeFromNavigatorLanguage(navigator.language ?? '')
+        if (nav) detected = nav
+      }
+    } catch {
+      /* ignore */
+    }
+    setLanguageState(detected)
+    setIsLanguageLocked(false)
+  }, [])
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, isLanguageLocked }}>
+    <LanguageContext.Provider value={{ language, setLanguage, isLanguageLocked, resetLanguage }}>
       {children}
     </LanguageContext.Provider>
   )

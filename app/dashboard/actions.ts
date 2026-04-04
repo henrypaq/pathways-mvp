@@ -80,6 +80,55 @@ export async function startOver(): Promise<{ ok: boolean }> {
     .update({ completeness_score: 0, data: {} })
     .eq('user_id', user.id)
 
+  // Fetch cases and documents before deletion (needed for FK-ordered cleanup)
+  const { data: userCases } = await supabase
+    .from('cases')
+    .select('id')
+    .eq('user_id', user.id)
+
+  const { data: userDocuments } = await supabase
+    .from('documents')
+    .select('id, file_url')
+    .eq('user_id', user.id)
+
+  if (userDocuments && userDocuments.length > 0) {
+    const documentIds = userDocuments.map((d) => d.id)
+
+    await supabase
+      .from('document_assessments')
+      .delete()
+      .in('document_id', documentIds)
+
+    // Best-effort storage cleanup — failure must not block the rest of the wipe
+    try {
+      for (const doc of userDocuments) {
+        if (doc.file_url) {
+          await supabase.storage.from('documents').remove([doc.file_url])
+        }
+      }
+    } catch (err) {
+      console.error('[startOver] storage cleanup error:', err)
+    }
+  }
+
+  await supabase
+    .from('documents')
+    .delete()
+    .eq('user_id', user.id)
+
+  await supabase
+    .from('cases')
+    .delete()
+    .eq('user_id', user.id)
+
+  console.log('[startOver] wiped for user:', user.id, {
+    recommendationsDeleted: true,
+    profileZeroed: true,
+    casesDeleted: userCases?.length ?? 0,
+    documentsDeleted: userDocuments?.length ?? 0,
+    storageFilesAttempted: userDocuments?.length ?? 0,
+  })
+
   revalidatePath('/onboarding')
   return { ok: true }
 }
