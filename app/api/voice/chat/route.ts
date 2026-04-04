@@ -5,7 +5,13 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(request: NextRequest) {
   try {
-    const { transcript, history, profile } = await request.json()
+    const { transcript, history, profile: rawProfile } = await request.json()
+    // Fix 3: treat an absent or empty profile as a fresh onboarding — do not hint to Claude
+    // that the conversation is already complete, even if stale data was passed by the client.
+    const profile: Record<string, unknown> =
+      rawProfile && typeof rawProfile === 'object' && Object.keys(rawProfile).length > 0
+        ? rawProfile as Record<string, unknown>
+        : {}
 
     const messages = [
       ...history.map((t: { role: string; content: string }) => ({

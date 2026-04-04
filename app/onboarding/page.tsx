@@ -1,8 +1,11 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useOnboardingStore } from "@/lib/onboardingStore";
+import { createClient } from "@/lib/supabase/client";
 import { ModeSelect } from "@/components/onboarding/ModeSelect";
 import { Onboarding1 } from "@/components/onboarding/Onboarding1";
 import { Onboarding2 } from "@/components/onboarding/Onboarding2";
@@ -14,6 +17,10 @@ import { Onboarding7 } from "@/components/onboarding/Onboarding7";
 import { AuthNav } from "@/components/auth/AuthNav";
 
 const TOTAL_STEPS = 7; // steps 0..7
+
+const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
+const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
+const VOICE_HISTORY_KEY = 'pathways_voice_onboarding_history'
 
 const slideVariants = {
   enter: (dir: number) => ({
@@ -29,6 +36,45 @@ const slideVariants = {
 
 export default function OnboardingPage() {
   const { currentStep, prevStep } = useOnboardingStore();
+  const router = useRouter();
+
+  // Fix 2: Skip to /results only when BOTH Supabase AND localStorage agree onboarding is done.
+  // If Supabase says the profile is not complete (reset happened), clear stale localStorage keys
+  // and do a hard replace so hooks re-initialise from clean storage.
+  useEffect(() => {
+    const localDone = localStorage.getItem(ONBOARDING_DONE_KEY) === 'true'
+    if (!localDone) return  // nothing stale — no check needed
+
+    const supabase = createClient()
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return  // unauthenticated — rely on localStorage only
+
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('completeness_score')
+        .eq('user_id', user.id)
+        .single()
+
+      const score: number = profileRow?.completeness_score ?? 0
+
+      if (score >= 0.5) {
+        // Both Supabase and localStorage agree: already complete — skip back to results
+        router.replace('/results')
+      } else {
+        // Supabase says not complete (was reset), but localStorage is stale — clear and reload
+        try {
+          localStorage.removeItem(ONBOARDING_DONE_KEY)
+          localStorage.removeItem(PROFILE_KEY)
+          sessionStorage.removeItem(VOICE_HISTORY_KEY)
+        } catch {
+          /* ignore */
+        }
+        // Hard replace so hooks re-initialise from the now-empty localStorage
+        window.location.replace('/onboarding')
+      }
+    })()
+  }, [router]);
 
   const stepComponents = [
     <ModeSelect key="0" />,

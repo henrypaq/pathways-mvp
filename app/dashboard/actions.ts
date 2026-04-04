@@ -31,15 +31,30 @@ export async function updateRoadmapStep(stepId: string, status: StepStatus): Pro
   revalidatePath('/dashboard')
 }
 
-export async function startOver(): Promise<never> {
+export async function startOver(): Promise<{ ok: boolean }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // Look up the profile row so we can delete its recommendations
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (profileRow) {
+    await supabase
+      .from('recommendations')
+      .delete()
+      .eq('profile_id', profileRow.id)
+  }
 
   await supabase
     .from('profiles')
     .update({ completeness_score: 0, data: {} })
     .eq('user_id', user.id)
 
-  redirect('/onboarding')
+  revalidatePath('/onboarding')
+  return { ok: true }
 }
