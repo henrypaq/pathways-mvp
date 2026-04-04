@@ -38,6 +38,7 @@ export const frMessages: Record<MessageKey, string> = {
 
   // ── Accessibility ───────────────────────���─────────────────────────────────
   'a11y.interfaceLanguage': "Langue de l\u2019interface",
+  'a11y.preferredAppLanguage': 'Langue d\u2019application pr\u00e9f\u00e9r\u00e9e',
 
   // ── Landing page ──────────────────────��──────────────────────────────────
   'hero.badge': "Orientation en immigration assist\u00e9e par l\u2019IA",
@@ -326,6 +327,9 @@ export const frMessages: Record<MessageKey, string> = {
   'account.defaultName': 'Membre Pathways',
   'account.signOut': 'Se d\u00e9connecter',
   'account.signingOut': 'D\u00e9connexion\u2026',
+  'account.appLanguageTitle': 'Langue de l\u2019application',
+  'account.appLanguageDesc':
+    'Enregistr\u00e9e sur votre profil pour la voix et les prochaines fonctionnalit\u00e9s. L\u2019anglais et le fran\u00e7ais sont enti\u00e8rement pris en charge. Les changements s\u2019appliquent tout de suite.',
 
   // ── Start over button ────────────────────────────────────────────────��────
   'startover.confirm.title': 'Effacer toutes les donn\u00e9es\u00a0?',

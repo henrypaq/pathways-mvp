@@ -37,6 +37,7 @@ export const enMessages = {
 
   // ── Accessibility ─────────────────────────────────────────────────────────
   'a11y.interfaceLanguage': 'Interface language',
+  'a11y.preferredAppLanguage': 'Preferred app language',
 
   // ── Landing page ─────────────────────────────────────────────────────────
   'hero.badge': 'AI-powered immigration guidance',
@@ -325,6 +326,9 @@ export const enMessages = {
   'account.defaultName': 'Pathways member',
   'account.signOut': 'Sign out',
   'account.signingOut': 'Signing out\u2026',
+  'account.appLanguageTitle': 'App language',
+  'account.appLanguageDesc':
+    'Saved to your profile for voice and upcoming features. English and French are fully supported today. Changes apply immediately.',
 
   // ── Start over button ─────────────────────────────────────────────────────
   'startover.confirm.title': 'Erase all data?',
