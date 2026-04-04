@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, ExternalLink, FileText, AlertTriangle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { updateSubmissionStep, type StepStatus } from './actions'
+import { useI18n } from '@/context/I18nContext'
 
 // ── Document labels ───────────────────────────────────────────────────────────
 
@@ -136,6 +137,7 @@ interface Props {
 }
 
 export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, onProgressChange }: Props) {
+  const { t } = useI18n()
   const [progress, setProgress] = useState<Record<string, StepStatus>>(initialProgress)
   const [pending, setPending] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -157,7 +159,7 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
     } catch {
       setProgress((p) => ({ ...p, [stepId]: prev }))
       onProgressChange(stepId, prev)
-      setErrors((e) => ({ ...e, [stepId]: 'Could not save — try again' }))
+      setErrors((e) => ({ ...e, [stepId]: t('submit.errorSave') }))
     } finally {
       setPending((p) => { const n = new Set(p); n.delete(stepId); return n })
     }
@@ -188,13 +190,13 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
           <div>
             <p className={`text-[13px] font-semibold ${allDocsDone ? 'text-[#065F46]' : 'text-[#92400E]'}`}>
               {allDocsDone
-                ? 'All documents uploaded — ready to submit'
-                : `${docCount} of 7 documents uploaded`}
+                ? t('submit.ready')
+                : t('submit.docsCount', { n: String(docCount) })}
             </p>
             <p className={`text-[12px] mt-0.5 ${allDocsDone ? 'text-[#065F46]/80' : 'text-[#92400E]/80'}`}>
               {allDocsDone
-                ? 'Follow the steps below to submit your application on the official IRCC portal.'
-                : 'Upload your remaining documents before submitting. IRCC will return incomplete applications.'}
+                ? t('submit.follow')
+                : t('submit.uploadRemaining')}
             </p>
           </div>
         </div>
@@ -203,8 +205,8 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
       {/* Progress header */}
       <div className="bg-white rounded-2xl border border-[#EBEBEB] px-5 py-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between mb-2.5">
-          <h3 className="text-[13px] font-semibold text-[#171717]">Submission checklist</h3>
-          <span className="text-[12px] text-[#737373]">{doneCount} of {TOTAL} steps done</span>
+          <h3 className="text-[13px] font-semibold text-[#171717]">{t('submit.title')}</h3>
+          <span className="text-[12px] text-[#737373]">{t('submit.progress', { n: String(doneCount) })}</span>
         </div>
         <div className="h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
           <motion.div
@@ -219,7 +221,7 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
             animate={{ opacity: 1, y: 0 }}
             className="mt-2.5 text-[12px] font-medium text-[#1D9E75]"
           >
-            ✓ Application submitted — good luck!
+            {t('submit.complete')}
           </motion.p>
         )}
       </div>
@@ -269,9 +271,9 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
                         {isPending ? (
                           <Loader2 size={10} className="animate-spin" />
                         ) : isDone ? (
-                          'Done ✓'
+                          t('submit.done')
                         ) : (
-                          'Mark done'
+                          t('submit.markDone')
                         )}
                       </button>
                     </div>
@@ -320,7 +322,7 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
                   {/* Documents needed */}
                   {step.docsNeeded && step.docsNeeded.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-1.5">Documents to upload here</p>
+                      <p className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-1.5">{t('submit.docsHere')}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {step.docsNeeded.map((docType) => {
                           const uploaded = uploadedDocTypes.has(docType)
@@ -360,9 +362,9 @@ export function SubmissionStep({ uploadedDocTypes, docCount, initialProgress, on
                         className="flex items-center gap-1 text-[11px] text-[#A3A3A3] hover:text-[#534AB7] transition-colors"
                       >
                         {isOpen ? (
-                          <><ChevronUp size={13} /> Less</>
+                          <><ChevronUp size={13} /> {t('submit.less')}</>
                         ) : (
-                          <><ChevronDown size={13} /> More detail</>
+                          <><ChevronDown size={13} /> {t('submit.more')}</>
                         )}
                       </button>
                     )}

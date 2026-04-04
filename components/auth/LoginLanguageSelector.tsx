@@ -8,8 +8,10 @@ import {
   type LoginLocaleOption,
 } from '@/lib/loginLocales'
 import { loginLanguageSelectStyles } from '@/lib/loginLanguageSelectStyles'
+import { useI18n } from '@/context/I18nContext'
 
 export function LoginLanguageSelector() {
+  const { t } = useI18n()
   const { language, setLanguage } = useLanguage()
 
   const value = useMemo(
@@ -24,7 +26,7 @@ export function LoginLanguageSelector() {
   return (
     <div className="mb-5 pb-5 border-b border-[#F0F0F0]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#A3A3A3] mb-2">
-        Language
+        {t('login.languageLabel')}
       </p>
       <Select<LoginLocaleOption, false>
         inputId="login-language"
@@ -48,7 +50,7 @@ export function LoginLanguageSelector() {
             <span className="truncate">{option.label}</span>
           </span>
         )}
-        aria-label="Interface language"
+        aria-label={t('a11y.interfaceLanguage')}
       />
     </div>
   )

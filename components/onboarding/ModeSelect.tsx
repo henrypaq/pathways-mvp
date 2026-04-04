@@ -4,9 +4,11 @@ import { motion } from "framer-motion";
 import { Mic, MessageSquare } from "lucide-react";
 import { useOnboardingStore } from "@/lib/onboardingStore";
 import type { OnboardingMode } from "@/lib/onboardingStore";
+import { useI18n } from "@/context/I18nContext";
 
 export function ModeSelect() {
   const { setMode, nextStep } = useOnboardingStore();
+  const { t } = useI18n();
   const [hovered, setHovered] = useState<"voice" | "chat" | null>(null);
 
   const handleSelect = (mode: OnboardingMode) => {
@@ -42,9 +44,9 @@ export function ModeSelect() {
               <Mic size={28} className="text-[#534AB7]" />
             </div>
             <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold text-[#171717] mb-3">Speak freely</h2>
+              <h2 className="text-2xl md:text-3xl font-semibold text-[#171717] mb-3">{t('mode.voice.title')}</h2>
               <p className="text-sm text-[#737373] max-w-[220px] leading-relaxed">
-                Tell us your story out loud — our AI will listen and understand.
+                {t('mode.voice.desc')}
               </p>
             </div>
             <div className="flex gap-1.5 mt-2">
@@ -91,9 +93,9 @@ export function ModeSelect() {
               <MessageSquare size={28} className="text-[#534AB7]" />
             </div>
             <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold text-[#171717] mb-3">Type instead</h2>
+              <h2 className="text-2xl md:text-3xl font-semibold text-[#171717] mb-3">{t('mode.chat.title')}</h2>
               <p className="text-sm text-[#737373] max-w-[220px] leading-relaxed">
-                Prefer to type? Have a conversation at your own pace.
+                {t('mode.chat.desc')}
               </p>
             </div>
             {/* Mock chat bubbles */}
@@ -116,7 +118,7 @@ export function ModeSelect() {
           onClick={() => handleSelect("manual")}
           className="text-sm text-[#737373] hover:text-[#525252] hover:underline underline-offset-4 transition-colors"
         >
-          Prefer to fill in your details manually →
+          {t('mode.manual')}
         </button>
       </motion.div>
     </div>

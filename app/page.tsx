@@ -7,6 +7,7 @@ import { Loader2, Shield, BookOpen, FileSearch, ChevronRight } from "lucide-reac
 import { AuthNav } from "@/components/auth/AuthNav";
 import { PageSurface } from "@/components/ui/PageSurface";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/context/I18nContext";
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -14,28 +15,17 @@ const fadeUp = {
   transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
 };
 
-const features = [
-  {
-    icon: Shield,
-    title: "Profile-aware guidance",
-    description: "Every answer tailored to your nationality, profession, and situation.",
-  },
-  {
-    icon: BookOpen,
-    title: "Cited official sources",
-    description: "Every claim grounded in official government websites, with timestamps.",
-  },
-  {
-    icon: FileSearch,
-    title: "Document AI",
-    description: "Upload your documents and get instant gap analysis and feedback.",
-  },
-];
-
 export default function LandingPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [isNavigating, setIsNavigating] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const features = [
+    { icon: Shield, title: t('feature.1.title'), description: t('feature.1.desc') },
+    { icon: BookOpen, title: t('feature.2.title'), description: t('feature.2.desc') },
+    { icon: FileSearch, title: t('feature.3.title'), description: t('feature.3.desc') },
+  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 80);
@@ -121,23 +111,23 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 bg-white border border-[#E5E5E5] rounded-full px-4 py-1.5 text-xs text-[#737373] mb-8 shadow-sm"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] animate-pulse" />
-            AI-powered immigration guidance
+            {t('hero.badge')}
           </motion.div>
 
           <motion.h1
             variants={fadeUp}
             className="text-5xl sm:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.08] text-[#171717] mb-6"
           >
-            Your immigration
+            {t('hero.title1')}
             <br />
-            <span className="text-[#534AB7]">journey, guided by AI.</span>
+            <span className="text-[#534AB7]">{t('hero.title2')}</span>
           </motion.h1>
 
           <motion.p
             variants={fadeUp}
             className="text-lg sm:text-xl text-[#737373] leading-relaxed mb-10 max-w-xl mx-auto"
           >
-            Personalized guidance, official sources, your language.
+            {t('hero.subtitle')}
           </motion.p>
 
           <motion.div variants={fadeUp}>
@@ -152,11 +142,11 @@ export default function LandingPage() {
             >
               {isNavigating ? (
                 <>
-                  Loading...
+                  {t('hero.loading')}
                   <Loader2 size={18} className="animate-spin" />
                 </>
               ) : (
-                "Begin your journey →"
+                t('hero.cta')
               )}
             </motion.button>
           </motion.div>
@@ -169,7 +159,7 @@ export default function LandingPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.6 }}
         >
-          <span className="text-xs text-[#A3A3A3]">Scroll to learn more</span>
+          <span className="text-xs text-[#A3A3A3]">{t('hero.scroll')}</span>
           <div className="w-px h-8 bg-gradient-to-b from-[#A3A3A3] to-transparent" />
         </motion.div>
       </section>
@@ -209,7 +199,7 @@ export default function LandingPage() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <p className="text-sm text-[#A3A3A3] mb-4">Ready to find your pathway?</p>
+          <p className="text-sm text-[#A3A3A3] mb-4">{t('hero.ready')}</p>
           <motion.button
             onClick={handleBeginClick}
             disabled={isNavigating}
@@ -217,7 +207,7 @@ export default function LandingPage() {
             whileTap={{ scale: 0.98 }}
             className="inline-flex items-center gap-2 border border-[#534AB7] text-[#534AB7] hover:bg-[#534AB7] hover:text-white text-sm font-medium px-6 py-2.5 rounded-full transition-colors cursor-pointer disabled:opacity-60"
           >
-            Get started for free
+            {t('hero.getStarted')}
             <ChevronRight size={16} />
           </motion.button>
         </motion.div>

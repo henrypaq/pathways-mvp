@@ -13,6 +13,11 @@ export async function POST(request: NextRequest) {
         ? rawProfile as Record<string, unknown>
         : {}
 
+    const lang = typeof profile.preferred_language === 'string' ? profile.preferred_language : 'en'
+    const langInstruction = lang === 'fr'
+      ? 'IMPORTANT: Respond entirely in French (Canadian French). All your responses must be in French.'
+      : ''
+
     const messages = [
       ...history.map((t: { role: string; content: string }) => ({
         role: t.role as 'user' | 'assistant',
@@ -73,7 +78,7 @@ CRITICAL RULES:
    PROFILE_DELTA:{"field": "value"}
    Only include fields learned THIS turn. If nothing new: PROFILE_DELTA:{}
 4. When all REQUIRED fields are collected, end with: ONBOARDING_COMPLETE
-5. Respond in whatever language the user speaks to you in.
+5. Respond in whatever language the user speaks to you in.${langInstruction ? `\n${langInstruction}` : ''}
 6. Start with a warm welcome and first question.
 
 Current profile: ${JSON.stringify(profile)}`,

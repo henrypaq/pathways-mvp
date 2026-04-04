@@ -12,6 +12,7 @@ import { DocumentsStep } from './DocumentsStep'
 import { RoadmapStepPage } from './RoadmapStepPage'
 import { SubmissionStep } from './SubmissionStep'
 import type { StepStatus } from './actions'
+import { useI18n } from '@/context/I18nContext'
 
 interface DocumentRow {
   id: string
@@ -83,13 +84,14 @@ function getSuggestedDoc(req: string): { docType: string; docLabel: string } | n
 // ── Pathway overview step ──────────────────────────────────────────────────────
 
 function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
+  const { t } = useI18n()
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-[#EBEBEB] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         {pathway.isVerified && (
           <div className="flex items-center gap-1.5 mb-3 text-[#1D9E75]">
             <ShieldCheck size={13} />
-            <span className="text-[11px] font-semibold uppercase tracking-wide">Verified Immigration Pathway</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide">{t('workspace.verified')}</span>
           </div>
         )}
         <div className="flex items-start gap-6">
@@ -103,14 +105,14 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
               <div className="flex items-center gap-2 bg-[#F7F7F7] rounded-xl px-3 py-2">
                 <Clock size={13} className="text-[#A3A3A3]" />
                 <div>
-                  <p className="text-[10px] text-[#A3A3A3] uppercase tracking-wide">Timeline</p>
+                  <p className="text-[10px] text-[#A3A3A3] uppercase tracking-wide">{t('workspace.timeline')}</p>
                   <p className="text-[13px] font-semibold text-[#171717]">{pathway.estimatedTimeline}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 bg-[#F7F7F7] rounded-xl px-3 py-2">
                 <DollarSign size={13} className="text-[#A3A3A3]" />
                 <div>
-                  <p className="text-[10px] text-[#A3A3A3] uppercase tracking-wide">Fees</p>
+                  <p className="text-[10px] text-[#A3A3A3] uppercase tracking-wide">{t('workspace.fees')}</p>
                   <p className="text-[13px] font-semibold text-[#171717]">{pathway.processingFeeRange}</p>
                 </div>
               </div>
@@ -139,7 +141,7 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-[20px] font-bold leading-none" style={{ color }}>{score}%</span>
-                  <span className="text-[10px] text-[#A3A3A3] mt-0.5">match</span>
+                  <span className="text-[10px] text-[#A3A3A3] mt-0.5">{t('card.match')}</span>
                 </div>
               </div>
             )
@@ -149,7 +151,7 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
 
       {pathway.matchReasons.length > 0 && (
         <div className="bg-white rounded-2xl border border-[#EBEBEB] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-          <h3 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">Why you qualify</h3>
+          <h3 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">{t('workspace.whyQualify')}</h3>
           <ul className="space-y-2.5">
             {pathway.matchReasons.map((r, i) => (
               <li key={i} className="flex items-start gap-2.5">
@@ -165,7 +167,7 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
         <div className="flex items-start gap-2.5">
           <AlertCircle size={14} className="text-[#534AB7] mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-[11px] font-semibold text-[#534AB7] uppercase tracking-wider mb-1">Your immediate next step</p>
+            <p className="text-[11px] font-semibold text-[#534AB7] uppercase tracking-wider mb-1">{t('workspace.nextStep')}</p>
             <p className="text-[13px] text-[#171717] leading-snug">{pathway.nextStep}</p>
           </div>
         </div>
@@ -179,7 +181,7 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
 
       {pathway.sources.length > 0 && (
         <div>
-          <p className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-2">Sources</p>
+          <p className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-2">{t('workspace.sources')}</p>
           <div className="flex flex-wrap gap-2">
             {pathway.sources.map((s, i) => (
               <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
@@ -214,6 +216,7 @@ interface FloatingChecklistProps {
 }
 
 function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, analyzingDocTypes, onNavigate }: FloatingChecklistProps) {
+  const { t } = useI18n()
   const scoreColor = score >= 70 ? '#1D9E75' : score >= 40 ? '#F59E0B' : '#534AB7'
   const metCount = requirements.filter((req) => {
     const s = getSuggestedDoc(req)
@@ -223,7 +226,7 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, ana
   return (
     <div className="flex w-full min-w-0 max-w-[400px] flex-col rounded-2xl border border-[#E5E5E5] bg-white p-5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
-        Application Score
+        {t('workspace.appScore')}
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
         <div style={{ flex: 1 }}>
@@ -237,7 +240,7 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, ana
               {score}%
             </motion.span>
             <span style={{ fontSize: '11px', color: '#A3A3A3' }}>
-              {score >= 70 ? 'Strong' : score >= 40 ? 'In progress' : 'Getting started'}
+              {score >= 70 ? t('workspace.strong') : score >= 40 ? t('workspace.inProgress') : t('workspace.gettingStarted')}
             </span>
           </div>
           <div className="h-1.5 rounded-full bg-[#F0F0F0] overflow-hidden">
@@ -257,9 +260,9 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, ana
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', marginBottom: '8px' }}>
             <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A3A3A3' }}>
-              Requirements
+              {t('workspace.requirements')}
             </p>
-            <span style={{ fontSize: '10px', color: '#A3A3A3' }}>{metCount}/{requirements.length} met</span>
+            <span style={{ fontSize: '10px', color: '#A3A3A3' }}>{t('workspace.metCount', { n: String(metCount), total: String(requirements.length) })}</span>
           </div>
           <div className="flex flex-col gap-0.5 mb-4">
             {requirements.map((req, i) => {
@@ -291,7 +294,7 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, ana
       )}
 
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
-        Steps
+        {t('workspace.stepsLabel')}
       </p>
       <div className="flex flex-col gap-0.5">
         {entries.map((e) => (
@@ -348,6 +351,7 @@ export function ApplicationWorkspace({
   pathway, roadmapSteps, roadmapProgress: initialProgress, submissionProgress: initialSubmissionProgress,
   caseId, userId, initialDocuments, profileData,
 }: Props) {
+  const { t } = useI18n()
   const [location, setLocation] = useState<WorkspaceLocation>({ kind: 'base', id: 'pathway' })
   const [completedSteps, setCompletedSteps] = useState<Set<BaseStepId>>(new Set())
   const [roadmapProgress, setRoadmapProgress] = useState(initialProgress)
@@ -398,12 +402,17 @@ export function ApplicationWorkspace({
 
   const sidebarEntries = useMemo((): SidebarEntry[] => {
     const entries: SidebarEntry[] = []
+    const stepLabels: Record<string, string> = {
+      pathway: t('workspace.step.pathway'),
+      documents: t('workspace.step.documents'),
+      submission: t('workspace.step.submission'),
+    }
     for (const s of BASE_STEP_DEFS) {
       const key = `base:${s.id}`
       entries.push({
         key,
-        label: s.label,
-        sub: s.id === 'documents' ? `${docCount} / 7 uploaded` : undefined,
+        label: stepLabels[s.id] ?? s.label,
+        sub: s.id === 'documents' ? t('workspace.docsCount', { n: String(docCount) }) : undefined,
         complete: completedSteps.has(s.id),
         current: activeKey === key,
       })
@@ -414,22 +423,22 @@ export function ApplicationWorkspace({
       entries.push({
         key,
         label: step.title,
-        sub: done ? 'Done' : step.estimatedTime,
+        sub: done ? t('workspace.done') : step.estimatedTime,
         complete: done,
         current: activeKey === key,
       })
     }
-    // Submission always last
     const submDone = Object.values(submissionProgress).filter((v) => v === 'done').length
     entries.push({
       key: 'base:submission',
-      label: 'Submit Application',
-      sub: submDone > 0 ? `${submDone} / 9 steps done` : undefined,
+      label: t('workspace.step.submission'),
+      sub: submDone > 0 ? t('workspace.stepsDone', { n: String(submDone) }) : undefined,
       complete: submDone === 9,
       current: activeKey === 'base:submission',
     })
     return entries
-  }, [activeKey, completedSteps, docCount, roadmapProgress, roadmapSteps, submissionProgress])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey, completedSteps, docCount, roadmapProgress, roadmapSteps, submissionProgress, t])
 
   const handleNext = useCallback(() => {
     const idx = flatLocations.findIndex((l) => locationKey(l) === activeKey)
@@ -472,7 +481,7 @@ export function ApplicationWorkspace({
       {/* Progress strip — white bar so the track reads clearly vs page background */}
       <div className="flex-shrink-0 bg-white border-b border-[#EBEBEB] px-6 py-3">
         <div className="flex items-center gap-3 w-full">
-          <span className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider flex-shrink-0">Progress</span>
+          <span className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider flex-shrink-0">{t('workspace.progress')}</span>
           <div className="flex-1 h-1.5 rounded-full bg-white shadow-[inset_0_0_0_1px_#E5E5E5] overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-[#534AB7] to-[#7C74D4]"
@@ -529,7 +538,7 @@ export function ApplicationWorkspace({
                     />
                   ) : (
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-[13px] text-red-700">
-                      Unable to load document manager — your session may have expired. Please refresh the page.
+                      {t('workspace.sessionError')}
                     </div>
                   )
                 )}
@@ -553,7 +562,7 @@ export function ApplicationWorkspace({
 
                 {location.kind === 'roadmap' && !currentRoadmapStep && (
                   <p className="text-center py-10 text-[13px] text-[#A3A3A3]">
-                    This step is no longer on your roadmap. Choose another item in the checklist.
+                    {t('workspace.noStep')}
                   </p>
                 )}
               </motion.div>
@@ -570,7 +579,7 @@ export function ApplicationWorkspace({
                     : 'text-[#737373] hover:text-[#171717] hover:bg-[#F5F5F5] active:bg-[#EBEBEB]'
                 }`}
               >
-                <ArrowLeft size={13} /> Back
+                <ArrowLeft size={13} /> {t('workspace.back')}
               </button>
 
               <button
@@ -589,11 +598,11 @@ export function ApplicationWorkspace({
               >
                 {isLastStep
                   ? location.kind === 'base'
-                    ? isCurrentComplete ? '✓ Completed' : 'Mark Complete'
-                    : 'End of plan'
+                    ? isCurrentComplete ? t('workspace.completed') : t('workspace.markComplete')
+                    : t('workspace.endOfPlan')
                   : location.kind === 'base' && isCurrentComplete
-                  ? <><ChevronRight size={14} /> Continue</>
-                  : <>Next Step <ChevronRight size={14} /></>
+                  ? <><ChevronRight size={14} /> {t('workspace.continue')}</>
+                  : <>{t('workspace.nextStepBtn')} <ChevronRight size={14} /></>
                 }
               </button>
             </div>

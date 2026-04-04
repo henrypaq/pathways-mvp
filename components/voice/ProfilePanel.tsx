@@ -5,10 +5,10 @@ import type { PathwaysProfile } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS, PROFILE_FIELD_LABELS } from '@/types/voice'
 import { getCountryLabel } from '@/lib/countries'
 import { useLanguage } from '@/context/LanguageContext'
+import { useI18n } from '@/context/I18nContext'
 
 const COUNTRY_FIELDS = new Set<keyof PathwaysProfile>(['current_country', 'nationality', 'destination_country'])
 
-/** Optional fields still stored on the profile but not shown in the live panel (too noisy or non-scalar). */
 const PROFILE_PANEL_HIDDEN_OPTIONAL = new Set<keyof PathwaysProfile>(['language_test'])
 
 function displayValue(field: keyof PathwaysProfile, value: string): string {
@@ -25,6 +25,7 @@ interface ProfilePanelProps {
 
 export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
   const { language, setLanguage, isLanguageLocked } = useLanguage()
+  const { t } = useI18n()
   const filledRequired = REQUIRED_PROFILE_FIELDS.filter((f) => profile[f] !== undefined && profile[f] !== '')
   const progressPct = (filledRequired.length / REQUIRED_PROFILE_FIELDS.length) * 100
 
@@ -35,16 +36,14 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
 
   return (
     <div className="flex w-full max-w-[328px] min-w-[280px] max-h-[min(78vh,620px)] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      {/* Header — padded; scroll region below is full width so the bar sits on the card edge */}
       <div className="shrink-0 px-5 pt-5 pb-4">
         <p
           className="text-gray-500"
           style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '12px' }}
         >
-          Your Profile
+          {t('profile.title')}
         </p>
 
-        {/* Progress bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             className="bg-gray-100"
@@ -53,7 +52,7 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
             aria-valuenow={Math.round(progressPct)}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="Profile completion"
+            aria-label={t('profile.completion')}
           >
             <motion.div
               animate={{ width: `${progressPct}%` }}
@@ -67,7 +66,6 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
         </div>
       </div>
 
-      {/* Completion banner */}
       <AnimatePresence>
         {isComplete && (
           <motion.div
@@ -78,53 +76,49 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
             className="mx-5 mb-4 bg-green-50 text-green-700 border border-green-200"
             style={{ borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: 500 }}
           >
-            Profile complete ✓
+            {t('profile.complete')}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Scrollable content — full card width; padding only on inner copy so scrollbar hugs the border */}
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div className="px-5 pb-4">
-        {/* Required fields */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: filledOptional.length > 0 ? '16px' : '0' }}>
-          {REQUIRED_PROFILE_FIELDS.map((field) => {
-            const value = profile[field]
-            const filled = value !== undefined && value !== ''
-            return (
-              <FieldRow
-                key={field}
-                label={PROFILE_FIELD_LABELS[field]}
-                value={filled ? displayValue(field, String(value)) : null}
-                required
-              />
-            )
-          })}
-        </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: filledOptional.length > 0 ? '16px' : '0' }}>
+            {REQUIRED_PROFILE_FIELDS.map((field) => {
+              const value = profile[field]
+              const filled = value !== undefined && value !== ''
+              return (
+                <FieldRow
+                  key={field}
+                  label={PROFILE_FIELD_LABELS[field]}
+                  value={filled ? displayValue(field, String(value)) : null}
+                  required
+                />
+              )
+            })}
+          </div>
 
-        {/* Divider + optional fields */}
-        <AnimatePresence>
-          {filledOptional.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-              <div className="border-gray-100" style={{ height: '1px', background: 'currentColor', marginBottom: '16px', opacity: 0.5 }} />
-              <p
-                className="text-gray-400"
-                style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px' }}
-              >
-                Additional details
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {filledOptional.map((field) => (
-                  <FieldRow key={field} label={PROFILE_FIELD_LABELS[field]} value={displayValue(field, String(profile[field]))} required={false} />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <AnimatePresence>
+            {filledOptional.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+                <div className="border-gray-100" style={{ height: '1px', background: 'currentColor', marginBottom: '16px', opacity: 0.5 }} />
+                <p
+                  className="text-gray-400"
+                  style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px' }}
+                >
+                  {t('profile.additional')}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {filledOptional.map((field) => (
+                    <FieldRow key={field} label={PROFILE_FIELD_LABELS[field]} value={displayValue(field, String(profile[field]))} required={false} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Language selector */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -133,8 +127,8 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
       >
         <p className="text-xs text-neutral-400 text-center">
           {isLanguageLocked
-            ? language === 'fr' ? 'Langue' : 'Language'
-            : 'Choose your language · Choisissez votre langue'}
+            ? t('profile.language')
+            : t('voice.chooseLanguage')}
         </p>
         <div className="inline-flex bg-neutral-100 rounded-full p-1 gap-1">
           {(['en', 'fr'] as const).map((lang) => (
@@ -147,7 +141,7 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
                   : 'text-neutral-400 px-4 py-1.5 text-sm hover:text-neutral-700 transition-colors cursor-pointer'
               }
             >
-              {lang === 'en' ? 'English' : 'Français'}
+              {lang === 'en' ? 'English' : 'Fran\u00e7ais'}
             </button>
           ))}
         </div>
@@ -165,7 +159,6 @@ interface FieldRowProps {
 function FieldRow({ label, value, required }: FieldRowProps) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-      {/* Status dot */}
       <div
         style={{
           width: '6px',
@@ -200,13 +193,12 @@ function FieldRow({ label, value, required }: FieldRowProps) {
             </motion.div>
           ) : (
             <div key="empty" className="text-gray-300" style={{ fontSize: '12px' }}>
-              —
+              &mdash;
             </div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Checkmark for filled required fields */}
       <AnimatePresence>
         {value && required && (
           <motion.span
@@ -216,7 +208,7 @@ function FieldRow({ label, value, required }: FieldRowProps) {
             transition={{ duration: 0.25 }}
             style={{ fontSize: '11px', color: '#1D9E75', flexShrink: 0, marginTop: '3px' }}
           >
-            ✓
+            &#10003;
           </motion.span>
         )}
       </AnimatePresence>

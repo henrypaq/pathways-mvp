@@ -45,7 +45,7 @@ async function embedQuery(text: string): Promise<number[]> {
 }
 
 // Step 1 — Use Haiku (fast, ~1-2s) to generate targeted search queries
-async function generateSearchQueries(profile: Partial<PathwaysProfile>): Promise<string[]> {
+async function generateSearchQueries(profile: Partial<PathwaysProfile>, lang = 'en'): Promise<string[]> {
   const profileText = Object.entries(profile)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${k}: ${v}`)
@@ -70,7 +70,7 @@ Rules:
 - Include at least one query about requirements/eligibility and one about processing times/fees
 
 Return ONLY a JSON array of 5 strings, nothing else. Example:
-["Express Entry Federal Skilled Worker eligibility requirements", ...]`,
+["Express Entry Federal Skilled Worker eligibility requirements", ...]${lang === 'fr' ? '\n\nNote: the applicant speaks French — you may generate queries in English as they are used for vector search, not shown to the user.' : ''}`,
       },
     ],
   })
@@ -153,6 +153,7 @@ async function retrieveChunks(queries: string[]): Promise<SearchHit[]> {
 async function synthesizeRecommendations(
   profile: Partial<PathwaysProfile>,
   chunks: Array<{ document: string; url: string; display_name: string; similarity: number; scraped_at: string | null }>,
+  lang = 'en',
 ): Promise<RecommendationsResult> {
   const profileText = Object.entries(profile)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -163,7 +164,11 @@ async function synthesizeRecommendations(
     .map((c, i) => `[SOURCE ${i + 1}: ${c.display_name} — ${c.url}]\n${c.document}`)
     .join('\n\n---\n\n')
 
-  const prompt = `You are an expert Canadian immigration advisor. Based ONLY on the official IRCC sources provided below, generate a personalized immigration recommendation report for this applicant.
+  const langInstruction = lang === 'fr'
+    ? '\nIMPORTANT: All string values in the JSON output must be written in French (Canadian French). This includes profileSummary, pathway names, matchReasons, requirements, nextStep, roadmap titles, descriptions, and all other human-readable fields. Keep internal identifiers (id fields, category values, status) in English.\n'
+    : ''
+
+  const prompt = `You are an expert Canadian immigration advisor. Based ONLY on the official IRCC sources provided below, generate a personalized immigration recommendation report for this applicant.${langInstruction}
 
 APPLICANT PROFILE:
 ${profileText}
@@ -250,6 +255,8 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Profile is too incomplete to generate recommendations' }, { status: 422 })
   }
 
+  const lang = typeof profile.preferred_language === 'string' ? profile.preferred_language : 'en'
+
   // Stream newline heartbeats every 5s so Netlify's gateway doesn't 504 while
   // Claude synthesizes. JSON.parse ignores leading whitespace so res.json()
   // on the client side still works without any changes.
@@ -261,7 +268,7 @@ export async function POST(request: Request): Promise<Response> {
         // Run deterministic scorer + query generation in parallel (scorer is pure JS, no I/O)
         console.log('[recommendations] stage 1: generating queries + running deterministic scorer')
         const [queries, scoring] = await Promise.all([
-          generateSearchQueries(profile),
+          generateSearchQueries(profile, lang),
           Promise.resolve(scoreAllPathways(mapProfileToScorer(profile as Record<string, unknown>), 'anonymous')),
         ])
         const verifiedPathways = scorerToPathwayMatches(scoring)
@@ -270,7 +277,7 @@ export async function POST(request: Request): Promise<Response> {
         console.log('[recommendations] stage 2: retrieving chunks for', queries.length, 'queries')
         const chunks = await retrieveChunks(queries)
         console.log('[recommendations] stage 3: synthesizing from', chunks.length, 'chunks')
-        const result = await synthesizeRecommendations(profile, chunks)
+        const result = await synthesizeRecommendations(profile, chunks, lang)
 
         // Merge: verified pathways first, then AI pathways that don't duplicate a verified one
         // Deduplicate by checking if any 7+ char word from Claude's pathway name appears in a verified name

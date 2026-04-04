@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type { PathwaysProfile } from '@/types/voice'
 import { GenerateDocumentModal } from './GenerateDocumentModal'
+import { useI18n } from '@/context/I18nContext'
 
 const GENERATABLE = new Set(['employment_letter'])
 
@@ -113,6 +114,7 @@ interface Props {
 function PreviewModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void }) {
   const [url, setUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const { t } = useI18n()
   const supabase = createClient()
 
   useEffect(() => {
@@ -142,7 +144,7 @@ function PreviewModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void 
           <div className="flex items-center gap-2">
             <FileText size={14} className="text-[#534AB7]" />
             <span className="text-[13px] font-semibold text-[#171717]">
-              {REQUIRED_DOCS.find(d => d.type === doc.type)?.label ?? getFileName(doc.file_url)}
+              {t(`docs.required.${doc.type ?? ''}` as Parameters<typeof t>[0]) || (REQUIRED_DOCS.find(d => d.type === doc.type)?.label ?? getFileName(doc.file_url))}
             </span>
           </div>
           <button onClick={onClose} className="text-[#A3A3A3] hover:text-[#171717] transition-colors">
@@ -158,7 +160,7 @@ function PreviewModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void 
             </div>
           ) : !url ? (
             <div className="h-full flex items-center justify-center text-[13px] text-[#A3A3A3]">
-              Could not load preview
+              {t('docs.couldNotPreview')}
             </div>
           ) : isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -180,6 +182,7 @@ function PreviewModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void 
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCountChange, onTypesChange, onAnalyzingTypesChange }: Props) {
+  const { t } = useI18n()
   const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments)
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -324,6 +327,13 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
   const uploadedByType = new Map(documents.map((d) => [d.type ?? '', d]))
   const uploadedCount = REQUIRED_DOCS.filter((d) => uploadedByType.has(d.type)).length
 
+  // Build translated doc labels/hints at render time (keeps internal type values unchanged)
+  const translatedDocs = REQUIRED_DOCS.map((d) => ({
+    ...d,
+    label: t(`docs.required.${d.type}` as Parameters<typeof t>[0]) || d.label,
+    hint: t(`docs.required.${d.type}.hint` as Parameters<typeof t>[0]) || d.hint,
+  }))
+
   return (
     <div className="space-y-0">
       {/* Single unified card */}
@@ -332,8 +342,8 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#F5F5F5] flex items-center justify-between">
           <div>
-            <h3 className="text-[14px] font-semibold text-[#171717]">Documents</h3>
-            <p className="text-[12px] text-[#737373] mt-0.5">{uploadedCount} of {REQUIRED_DOCS.length} requirements fulfilled</p>
+            <h3 className="text-[14px] font-semibold text-[#171717]">{t('docs.title')}</h3>
+            <p className="text-[12px] text-[#737373] mt-0.5">{t('docs.fulfilled', { n: String(uploadedCount), total: String(REQUIRED_DOCS.length) })}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-20 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
@@ -373,8 +383,8 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                 <div className="flex flex-col items-center gap-2 w-full max-w-[200px]">
                   <p className="text-[13px] font-medium text-[#534AB7]">
                     {uploadProgress.total > 1
-                      ? `Uploading ${uploadProgress.done + 1} of ${uploadProgress.total}…`
-                      : 'Uploading…'}
+                      ? t('docs.uploadingN', { done: String(uploadProgress.done + 1), total: String(uploadProgress.total) })
+                      : t('docs.uploading')}
                   </p>
                   <div className="w-full h-1 bg-[#E0DEFF] rounded-full overflow-hidden">
                     <motion.div
@@ -387,10 +397,10 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
               ) : (
                 <>
                   <p className="text-[13px] font-medium text-[#171717]">
-                    Drop files here, or <span className="text-[#534AB7]">click to browse</span>
+                    {t('docs.dropHint')} <span className="text-[#534AB7]">{t('docs.browse')}</span>
                   </p>
                   <p className="text-[11px] text-[#A3A3A3] max-w-xs leading-relaxed">
-                    PDF, JPG, PNG · Max 10 MB · Multiple files at once · AI identifies each document automatically
+                    {t('docs.hint')}
                   </p>
                 </>
               )}
@@ -430,7 +440,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
 
         {/* Checklist rows */}
         <div className="divide-y divide-[#F9F9F9]">
-          {REQUIRED_DOCS.map((docSpec) => {
+          {translatedDocs.map((docSpec) => {
             const doc = uploadedByType.get(docSpec.type)
             const isAnalyzing = doc ? analyzing.has(doc.id) : false
             const hasData = doc?.extracted_data && !doc.extracted_data._error
@@ -477,8 +487,8 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
 
                             {confirmDeleteId === doc.id ? (
                               <>
-                                <button onClick={() => void handleDelete(doc)} className="text-[11px] text-red-600 font-semibold hover:text-red-800 transition-colors px-2">Remove</button>
-                                <button onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-[#A3A3A3] hover:text-[#525252] transition-colors">Cancel</button>
+                                <button onClick={() => void handleDelete(doc)} className="text-[11px] text-red-600 font-semibold hover:text-red-800 transition-colors px-2">{t('docs.remove')}</button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-[#A3A3A3] hover:text-[#525252] transition-colors">{t('docs.cancel')}</button>
                               </>
                             ) : (
                               <>
@@ -486,7 +496,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                                   onClick={() => fileInputRef.current?.click()}
                                   className="text-[11px] text-[#737373] hover:text-[#534AB7] font-medium transition-colors px-2 py-1 rounded-lg hover:bg-[#F4F2FF]"
                                 >
-                                  Replace
+                                  {t('docs.replace')}
                                 </button>
                                 <button onClick={() => setConfirmDeleteId(doc.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#D4D4D4] hover:text-[#A3A3A3] hover:bg-[#F5F5F5] transition-colors">
                                   <X size={13} />
@@ -502,7 +512,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-[#534AB7] to-[#7B6FD6] text-white hover:from-[#3C3489] hover:to-[#534AB7] transition-all shadow-sm shadow-[#534AB7]/20"
                               >
                                 <Wand2 size={10} />
-                                Generate with AI
+                                {t('docs.generateWithAI')}
                               </button>
                             )}
                             <button
@@ -510,7 +520,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white border border-[#E0DEFF] text-[#534AB7] hover:bg-[#F4F2FF] hover:border-[#C5BFFF] transition-all"
                             >
                               <ArrowUpFromLine size={10} />
-                              Upload
+                              {t('docs.upload')}
                             </button>
                           </div>
                         )}
@@ -521,7 +531,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                     <p className="text-[11px] mt-0.5 leading-snug">
                       {isAnalyzing ? (
                         <span className="text-[#534AB7] flex items-center gap-1">
-                          <Sparkles size={9} /> Identifying and analyzing with AI…
+                          <Sparkles size={9} /> {t('docs.analyzing')}
                         </span>
                       ) : hasData ? (
                         <span className="text-[#1D9E75]">{summarize(docSpec.type, doc!.extracted_data!)}</span>
