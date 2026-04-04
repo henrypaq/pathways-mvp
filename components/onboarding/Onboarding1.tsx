@@ -21,6 +21,7 @@ function VoiceMode() {
     errorMessage,
     startListening,
     stopListening,
+    stopPlaybackAndTts,
     triggerWelcome,
     restartConversation,
   } = useVoiceOnboarding();
@@ -28,18 +29,26 @@ function VoiceMode() {
   const { language } = useLanguage();
   const { t } = useI18n();
   const isFirstRender = useRef(true);
+  const hasInitialized = useRef(false);
 
-  // Language is always locked before the user reaches voice mode — fire immediately on mount
+  // Language is always locked before the user reaches voice mode — fire immediately on mount.
+  // hasInitialized guards against React StrictMode double-invoke racing with language-switch effect.
   useEffect(() => {
-    triggerWelcome();
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    const timer = setTimeout(() => {
+      triggerWelcome();
+    }, 300);
+    return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mid-session language switch: stop current audio and re-greet in new language
+  // Mid-session language switch: stop current audio immediately, then re-greet in new language
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
+    stopPlaybackAndTts();
     restartConversation();
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 

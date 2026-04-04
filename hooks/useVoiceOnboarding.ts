@@ -95,6 +95,7 @@ export interface UseVoiceOnboardingReturn {
   errorMessage: string | null
   startListening: () => void
   stopListening: () => void
+  stopPlaybackAndTts: () => void
   triggerWelcome: () => void
   restartConversation: () => void
   requiredFieldsRemaining: (keyof PathwaysProfile)[]
@@ -125,7 +126,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   const hasWelcomed = useRef(false)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const abortRunRef = useRef<AbortController | null>(null)
+  const abortRunRef = useRef<AbortController>(new AbortController())
   const playingAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const runTurnRef = useRef<(transcript: string) => Promise<void>>(
@@ -147,8 +148,8 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   }, [isComplete])
 
   const stopPlaybackAndTts = useCallback(() => {
-    abortRunRef.current?.abort()
-    abortRunRef.current = null
+    abortRunRef.current.abort()
+    abortRunRef.current = new AbortController()
     if (playingAudioRef.current) {
       try {
         playingAudioRef.current.pause()
@@ -180,6 +181,11 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
               if (buffer.byteLength === 0) { console.warn('[voice] empty audio, skipping'); finish(); return }
               const blob = new Blob([buffer], { type: 'audio/mpeg' })
               const url = URL.createObjectURL(blob)
+              if (playingAudioRef.current) {
+                playingAudioRef.current.pause()
+                playingAudioRef.current.src = ''
+                playingAudioRef.current = null
+              }
               const audio = new Audio(url)
               playingAudioRef.current = audio
               const cleanup = () => {
@@ -204,6 +210,11 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
 
         const mediaSource = new MediaSource()
         const url = URL.createObjectURL(mediaSource)
+        if (playingAudioRef.current) {
+          playingAudioRef.current.pause()
+          playingAudioRef.current.src = ''
+          playingAudioRef.current = null
+        }
         const audio = new Audio(url)
         playingAudioRef.current = audio
 
@@ -286,9 +297,9 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
 
   const runTurn = async (transcript: string): Promise<void> => {
     console.log('[voice] runTurn called with:', transcript)
-    abortRunRef.current?.abort()
-    const ac = new AbortController()
-    abortRunRef.current = ac
+    abortRunRef.current.abort()
+    abortRunRef.current = new AbortController()
+    const ac = abortRunRef.current
 
     try {
       setOrbTracked('thinking')
@@ -633,6 +644,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     errorMessage,
     startListening,
     stopListening,
+    stopPlaybackAndTts,
     triggerWelcome,
     restartConversation,
     requiredFieldsRemaining,
