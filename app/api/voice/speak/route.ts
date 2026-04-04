@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const { text, lang = 'en' } = await request.json()
+    console.log('[speak] incoming request:', { text: text?.slice(0, 60), lang })
 
     // Strip control tokens before sending to ElevenLabs
     const cleaned = text
@@ -18,6 +19,13 @@ export async function POST(request: NextRequest) {
       ? process.env.ELEVENLABS_VOICE_ID_FR!
       : process.env.ELEVENLABS_VOICE_ID_EN!
 
+    console.log('[speak] calling ElevenLabs:', {
+      voiceId,
+      modelId: process.env.ELEVENLABS_MODEL_ID ?? 'eleven_multilingual_v2',
+      languageCode: lang === 'fr' ? 'fr' : 'en',
+      textLength: cleaned?.length,
+      textPreview: cleaned?.slice(0, 60),
+    })
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
@@ -38,9 +46,11 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    console.log('[speak] ElevenLabs response status:', response.status, response.statusText)
+
     if (!response.ok) {
       const err = await response.text()
-      console.error('[/api/voice/speak] ElevenLabs error:', err)
+      console.error('[speak] ElevenLabs error body:', err)
       return Response.json({ error: 'tts_failed' }, { status: 500 })
     }
 
@@ -48,7 +58,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'audio/mpeg' },
     })
   } catch (error) {
-    console.error('[/api/voice/speak]', error)
+    console.error('[speak] unexpected error:', error)
     return Response.json({ error: 'tts_failed' }, { status: 500 })
   }
 }
