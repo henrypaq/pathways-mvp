@@ -376,7 +376,7 @@ export default function ResultsPage() {
                       className="mt-4"
                     >
                       <button
-                        onClick={() => router.push('/dashboard')}
+                        onClick={() => router.push(`/dashboard?pathway=${encodeURIComponent(selectedPathwayId ?? '')}`)}
                         className="w-full flex items-center justify-center gap-2 py-3 bg-[#534AB7] text-white text-[13px] font-semibold rounded-[12px] hover:bg-[#3C3489] transition-colors"
                       >
                         <Sparkles size={14} />
