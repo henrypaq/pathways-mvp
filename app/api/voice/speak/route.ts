@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[speak] calling ElevenLabs:', {
       voiceId,
-      modelId: process.env.ELEVENLABS_MODEL_ID ?? 'eleven_multilingual_v2',
+      modelId: 'eleven_multilingual_v2',
       languageCode: lang === 'fr' ? 'fr' : 'en',
       textLength: cleaned?.length,
       textPreview: cleaned?.slice(0, 60),
