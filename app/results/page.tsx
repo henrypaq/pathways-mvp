@@ -30,11 +30,12 @@ function LoadingState() {
   const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {
+    const max = steps.length - 1
     const interval = setInterval(() => {
-      setStepIndex((i) => Math.min(i + 1, steps.length - 1))
+      setStepIndex((i) => Math.min(i + 1, max))
     }, 1800)
     return () => clearInterval(interval)
-  }, [])
+  }, [steps.length])
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-8 px-6">
@@ -266,7 +267,7 @@ export default function ResultsPage() {
       </div>
 
       {/* Main body */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-[var(--ui-page)]">
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div key="loading" className="h-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -355,7 +356,7 @@ export default function ResultsPage() {
               </div>
 
               {/* Right panel — roadmap */}
-              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 border-[var(--ui-border)] overflow-y-auto bg-white px-4 py-6 lg:shadow-[-1px_0_0_0_var(--ui-border)]">
+              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--ui-border)] overflow-y-auto bg-[var(--ui-page)] px-4 py-6">
                 {selectedPathway && roadmapSteps.length > 0 ? (
                   <motion.div
                     key={selectedPathwayId}

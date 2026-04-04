@@ -33,7 +33,6 @@ interface Props {
 const BASE_STEP_DEFS = [
   { id: 'pathway' as const, label: 'Pathway Overview' },
   { id: 'documents' as const, label: 'Documents' },
-  { id: 'requirements' as const, label: 'Requirements' },
 ] as const
 type BaseStepId = (typeof BASE_STEP_DEFS)[number]['id']
 
@@ -190,68 +189,6 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
   )
 }
 
-// ── Requirements step ──────────────────────────────────────────────────────────
-
-function RequirementsStep({
-  pathway,
-  uploadedDocTypes,
-}: {
-  pathway: PathwayMatch
-  uploadedDocTypes: Set<string>
-}) {
-  const metCount = pathway.requirements.filter((req) => {
-    const s = getSuggestedDoc(req)
-    return s ? uploadedDocTypes.has(s.docType) : false
-  }).length
-
-  return (
-    <div className="space-y-4">
-      <p className="text-[13px] text-[#737373] leading-relaxed">
-        Official eligibility requirements for {pathway.name}. Upload supporting documents in the Documents step to mark each one as met.
-      </p>
-
-      <div className="bg-white rounded-2xl border border-[#EBEBEB] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="px-5 py-4 border-b border-[#F5F5F5] flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-[#171717]">Requirements</p>
-          <span className="text-[12px] text-[#A3A3A3]">{metCount} of {pathway.requirements.length} met</span>
-        </div>
-        <div className="divide-y divide-[#F9F9F9]">
-          {pathway.requirements.map((req, i) => {
-            const suggestion = getSuggestedDoc(req)
-            const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
-            return (
-              <div key={i} className="px-5 py-4 flex items-start gap-3">
-                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                  isMet ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
-                }`}>
-                  {isMet && (
-                    <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
-                      <path d="M1 2.5l1.5 1.5 3.5-3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-                <span className={`flex-1 text-[13px] leading-snug ${isMet ? 'text-[#171717]' : 'text-[#525252]'}`}>
-                  {req}
-                </span>
-                {suggestion && !isMet && (
-                  <span className="flex-shrink-0 text-[11px] text-[#A3A3A3] bg-[#F5F5F5] px-2 py-0.5 rounded-full whitespace-nowrap">
-                    {suggestion.docLabel}
-                  </span>
-                )}
-              </div>
-            )
-          })}
-          {pathway.requirements.length === 0 && (
-            <div className="px-5 py-8 text-center text-[13px] text-[#A3A3A3]">
-              No specific requirements listed for this pathway.
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Floating checklist panel ───────────────────────────────────────────────────
 
 type SidebarEntry = {
@@ -265,11 +202,17 @@ type SidebarEntry = {
 interface FloatingChecklistProps {
   entries: SidebarEntry[]
   score: number
+  requirements: string[]
+  uploadedDocTypes: Set<string>
   onNavigate: (key: string) => void
 }
 
-function FloatingChecklist({ entries, score, onNavigate }: FloatingChecklistProps) {
+function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onNavigate }: FloatingChecklistProps) {
   const scoreColor = score >= 70 ? '#1D9E75' : score >= 40 ? '#F59E0B' : '#534AB7'
+  const metCount = requirements.filter((req) => {
+    const s = getSuggestedDoc(req)
+    return s ? uploadedDocTypes.has(s.docType) : false
+  }).length
 
   return (
     <div
@@ -352,6 +295,39 @@ function FloatingChecklist({ entries, score, onNavigate }: FloatingChecklistProp
             </div>
           </button>
         ))}
+
+        {/* Requirements section */}
+        {requirements.length > 0 && (
+          <>
+            <div style={{ height: '1px', background: '#F0F0F0', margin: '10px 0 12px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', marginBottom: '6px' }}>
+              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A3A3A3' }}>
+                Requirements
+              </p>
+              <span style={{ fontSize: '10px', color: '#A3A3A3' }}>{metCount}/{requirements.length} met</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {requirements.map((req, i) => {
+                const suggestion = getSuggestedDoc(req)
+                const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
+                return (
+                  <div key={i} className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg">
+                    <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                      isMet ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
+                    }`}>
+                      {isMet && (
+                        <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
+                          <path d="M0.5 2l1.5 1.5 3.5-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '11px', color: isMet ? '#A3A3A3' : '#525252', lineHeight: '1.4' }}>{req}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -379,7 +355,6 @@ export function ApplicationWorkspace({
     return [
       { kind: 'base', id: 'pathway' },
       { kind: 'base', id: 'documents' },
-      { kind: 'base', id: 'requirements' },
       ...tail,
     ]
   }, [roadmapSteps])
@@ -528,13 +503,6 @@ export function ApplicationWorkspace({
                   )
                 )}
 
-                {location.kind === 'base' && location.id === 'requirements' && (
-                  <RequirementsStep
-                    pathway={pathway}
-                    uploadedDocTypes={uploadedDocTypes}
-                  />
-                )}
-
                 {location.kind === 'roadmap' && currentRoadmapStep && (
                   <RoadmapStepPage
                     step={currentRoadmapStep}
@@ -599,6 +567,8 @@ export function ApplicationWorkspace({
           <FloatingChecklist
             entries={sidebarEntries}
             score={score}
+            requirements={pathway.requirements}
+            uploadedDocTypes={uploadedDocTypes}
             onNavigate={handleNavigate}
           />
         </div>

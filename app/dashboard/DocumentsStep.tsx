@@ -133,7 +133,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
     setTimeout(() => fileInputRef.current?.click(), 400)
   }
 
-  async function analyzeDocument(docId: string, docType: string) {
+  async function analyzeDocument(docId: string) {
     setAnalyzing((prev) => new Set(prev).add(docId))
     try {
       const res = await fetch('/api/documents/analyze', {
@@ -195,7 +195,7 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
       setDocuments((prev) => [newDoc, ...prev])
       setSelectedType('')
       if (fileInputRef.current) fileInputRef.current.value = ''
-      void analyzeDocument(newDoc.id, newDoc.type ?? '')
+      void analyzeDocument(newDoc.id)
     } finally {
       setUploading(false)
     }
@@ -220,88 +220,6 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
 
   return (
     <div className="space-y-6">
-      {/* Upload zone */}
-      <div className="bg-white rounded-2xl border border-[#EBEBEB] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="px-6 pt-6 pb-4">
-          <h3 className="text-[15px] font-semibold text-[#171717] mb-1">Upload Document</h3>
-          <p className="text-[12px] text-[#737373]">Select a document type, then drop your file or click to browse. AI analyzes each upload automatically.</p>
-        </div>
-
-        <div className="px-6 pb-6 space-y-3">
-          {/* Type selector */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {REQUIRED_DOCS.map((doc) => (
-              <button
-                key={doc.type}
-                onClick={() => setSelectedType(doc.type === selectedType ? '' : doc.type)}
-                className={`px-3 py-2 rounded-xl text-[11px] font-medium text-left transition-colors border ${
-                  selectedType === doc.type
-                    ? 'bg-[#534AB7] text-white border-[#534AB7]'
-                    : uploadedByType.has(doc.type)
-                    ? 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0]'
-                    : 'bg-[#F7F7F7] text-[#525252] border-transparent hover:bg-[#EEEDFE] hover:text-[#534AB7] hover:border-[#534AB7]/20'
-                }`}
-              >
-                {uploadedByType.has(doc.type) && selectedType !== doc.type ? '✓ ' : ''}{doc.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Drop zone */}
-          <div
-            ref={uploadZoneRef}
-            onDragOver={(e) => { e.preventDefault(); if (selectedType) setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            onClick={() => { if (selectedType) fileInputRef.current?.click() }}
-            className={`relative border-2 border-dashed rounded-2xl transition-all ${
-              !selectedType
-                ? 'border-[#E5E5E5] opacity-50 cursor-not-allowed'
-                : dragOver
-                ? 'border-[#534AB7] bg-[#EEEDFE] cursor-pointer'
-                : 'border-[#D4D4D4] hover:border-[#534AB7] hover:bg-[#FAFAFE] cursor-pointer'
-            }`}
-            style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <div className="flex flex-col items-center gap-4 py-10 px-6 text-center">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
-                uploading ? 'bg-[#EEEDFE]' : selectedType ? 'bg-[#EEEDFE]' : 'bg-[#F0F0F0]'
-              }`}>
-                {uploading
-                  ? <Loader2 size={24} className="text-[#534AB7] animate-spin" />
-                  : <Upload size={22} className={selectedType ? 'text-[#534AB7]' : 'text-[#A3A3A3]'} />}
-              </div>
-              {uploading ? (
-                <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
-              ) : selectedType ? (
-                <>
-                  <p className="text-[13px] text-[#525252]">
-                    Drop your <strong className="text-[#534AB7]">{REQUIRED_DOCS.find(d => d.type === selectedType)?.label}</strong> here
-                  </p>
-                  <p className="text-[11px] text-[#A3A3A3]">or click to browse · PDF, JPG, PNG · Max 10 MB</p>
-                </>
-              ) : (
-                <p className="text-[13px] text-[#A3A3A3]">Select a document type above to begin uploading</p>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleFile(file) }}
-            />
-          </div>
-
-          {uploadError && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-              <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />
-              <p className="text-[12px] text-red-700">{uploadError}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Required documents checklist */}
       <div className="bg-white rounded-2xl border border-[#EBEBEB] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="px-6 py-4 border-b border-[#F5F5F5] flex items-center justify-between">
@@ -425,6 +343,81 @@ export function DocumentsStep({ initialDocuments, caseId, userId, onCountChange,
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* Upload zone */}
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="px-6 pt-6 pb-4">
+          <h3 className="text-[15px] font-semibold text-[#171717] mb-1">Upload Document</h3>
+          <p className="text-[12px] text-[#737373]">Choose a document type, then drop your file or click to browse. AI analyzes each upload automatically.</p>
+        </div>
+
+        <div className="px-6 pb-6 space-y-3">
+          {/* Type dropdown */}
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="w-full border border-[#E5E5E5] rounded-xl text-[13px] text-[#171717] px-3 py-2.5 focus:outline-none focus:border-[#534AB7] transition-colors bg-white appearance-none"
+          >
+            <option value="">Select document type…</option>
+            {REQUIRED_DOCS.map((d) => (
+              <option key={d.type} value={d.type}>{d.label}</option>
+            ))}
+          </select>
+
+          {/* Drop zone */}
+          <div
+            ref={uploadZoneRef}
+            onDragOver={(e) => { e.preventDefault(); if (selectedType) setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => { if (selectedType) fileInputRef.current?.click() }}
+            className={`relative border-2 border-dashed rounded-2xl transition-all ${
+              !selectedType
+                ? 'border-[#E5E5E5] opacity-50 cursor-not-allowed'
+                : dragOver
+                ? 'border-[#534AB7] bg-[#EEEDFE] cursor-pointer'
+                : 'border-[#D4D4D4] hover:border-[#534AB7] hover:bg-[#FAFAFE] cursor-pointer'
+            }`}
+            style={{ minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <div className="flex flex-col items-center gap-4 py-8 px-6 text-center">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                uploading ? 'bg-[#EEEDFE]' : selectedType ? 'bg-[#EEEDFE]' : 'bg-[#F0F0F0]'
+              }`}>
+                {uploading
+                  ? <Loader2 size={24} className="text-[#534AB7] animate-spin" />
+                  : <Upload size={22} className={selectedType ? 'text-[#534AB7]' : 'text-[#A3A3A3]'} />}
+              </div>
+              {uploading ? (
+                <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
+              ) : selectedType ? (
+                <>
+                  <p className="text-[13px] text-[#525252]">
+                    Drop your <strong className="text-[#534AB7]">{REQUIRED_DOCS.find(d => d.type === selectedType)?.label}</strong> here
+                  </p>
+                  <p className="text-[11px] text-[#A3A3A3]">or click to browse · PDF, JPG, PNG · Max 10 MB</p>
+                </>
+              ) : (
+                <p className="text-[13px] text-[#A3A3A3]">Select a document type above to begin uploading</p>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleFile(file) }}
+            />
+          </div>
+
+          {uploadError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />
+              <p className="text-[12px] text-red-700">{uploadError}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -51,6 +51,12 @@ export function RoadmapStepPage({
     <div className="space-y-6">
       <p className="text-[13px] text-[#737373] leading-relaxed">{step.description}</p>
 
+      <div className="flex items-start gap-2.5 px-4 py-3 bg-[#F7F7F7] rounded-xl border border-[#EBEBEB]">
+        <span className="text-[11px] text-[#A3A3A3] leading-relaxed">
+          Complete this step in real life, then update your status below to track your progress.
+        </span>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wide mr-1">Status</span>
         {STATUS_OPTIONS.map(({ value, label }) => {
