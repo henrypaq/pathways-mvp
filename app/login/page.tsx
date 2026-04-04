@@ -42,9 +42,15 @@ export default async function LoginPage({ searchParams }: Props) {
       </nav>
 
       <div className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-center px-5 py-4 md:py-6 overflow-hidden">
-        <h1 className="text-center text-[22px] sm:text-[26px] font-semibold tracking-tight text-[#171717] leading-tight mb-4 shrink-0">
-          Sign in to Pathways
-        </h1>
+        <div className="text-center shrink-0 mb-4 max-w-md mx-auto">
+          <h1 className="text-[22px] sm:text-[26px] font-semibold tracking-tight text-[#171717] leading-tight mb-2">
+            Sign in to Pathways
+          </h1>
+          <p className="text-[13px] text-[#737373] leading-snug">
+            Your language is saved to your profile for voice and upcoming features.
+            English and French are fully supported today.
+          </p>
+        </div>
 
         <div
           className="w-full max-w-[480px] rounded-[16px] border border-[#E5E5E5] bg-white p-5 sm:p-6 shadow-[0_4px_40px_rgba(83,74,183,0.07)] shrink-0"

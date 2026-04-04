@@ -6,6 +6,7 @@ import { REQUIRED_PROFILE_FIELDS, normalizeVoiceProfile } from '@/types/voice'
 import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 import { useLanguage } from '@/context/LanguageContext'
+import { voiceLanguageFromLocale } from '@/lib/voiceLocale'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
@@ -321,7 +322,10 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: ac.signal,
-            body: JSON.stringify({ text: sentence, lang: language }),
+            body: JSON.stringify({
+              text: sentence,
+              lang: voiceLanguageFromLocale(language),
+            }),
           })
           if (!speakRes.ok) {
             console.error('[voice] speak error:', speakRes.status)
@@ -392,7 +396,8 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     const recognition = new Ctor()
     recognition.continuous = false
     recognition.interimResults = false
-    recognition.lang = language === 'fr' ? 'fr-FR' : 'en-US'
+    recognition.lang =
+      voiceLanguageFromLocale(language) === 'fr' ? 'fr-FR' : 'en-US'
     recognition.maxAlternatives = 1
 
     let gotResult = false
@@ -433,7 +438,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       console.error('[voice] recognition.start failed:', e)
       setOrbTracked('idle')
     }
-  }, [setOrbTracked])
+  }, [language, setOrbTracked])
 
   const stopListening = useCallback(() => {
     try {

@@ -1,10 +1,11 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { mergeProfileData } from '@/lib/profileDataMerge'
+import { isPreferredLocaleCode } from '@/lib/loginLocales'
 
 /**
  * POST /api/profile/preferences
- * Body: { preferredLanguage: 'en' | 'fr' }
+ * Body: { preferredLanguage: PreferredLocaleCode }
  *
  * Merges preferred_language into profiles.data without wiping onboarding fields.
  */
@@ -17,8 +18,8 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  if (preferredLanguage !== 'en' && preferredLanguage !== 'fr') {
-    return Response.json({ error: 'preferredLanguage must be en or fr' }, { status: 400 })
+  if (typeof preferredLanguage !== 'string' || !isPreferredLocaleCode(preferredLanguage)) {
+    return Response.json({ error: 'Invalid preferredLanguage' }, { status: 400 })
   }
 
   const serverClient = await createServerSupabaseClient()

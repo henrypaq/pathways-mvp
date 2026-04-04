@@ -3,17 +3,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/context/LanguageContext'
+import { voiceLanguageFromLocale } from '@/lib/voiceLocale'
 
 const WORDS = ['Welcome', 'Bienvenue']
 const CYCLE_MS = 1800
 const LOCK_FREEZE_MS = 1500
 
-const WORD_FOR_LANG = { en: 'Welcome', fr: 'Bienvenue' }
+const WORD_FOR_VOICE = { en: 'Welcome', fr: 'Bienvenue' } as const
 
 export function WelcomeAnimation() {
   const { language, isLanguageLocked } = useLanguage()
 
-  const [wordIndex, setWordIndex] = useState(0)
   // 'cycling' | 'frozen' | 'gone'
   const [phase, setPhase] = useState<'cycling' | 'frozen' | 'gone'>('cycling')
   const [displayWord, setDisplayWord] = useState(WORDS[0])
@@ -25,10 +25,10 @@ export function WelcomeAnimation() {
   useEffect(() => {
     if (phase !== 'cycling') return
     cycleRef.current = setInterval(() => {
-      setWordIndex((i) => {
-        const next = (i + 1) % WORDS.length
-        setDisplayWord(WORDS[next])
-        return next
+      setDisplayWord((w) => {
+        const i = WORDS.indexOf(w)
+        const next = (i < 0 ? 0 : i + 1) % WORDS.length
+        return WORDS[next]
       })
     }, CYCLE_MS)
     return () => {
@@ -41,8 +41,11 @@ export function WelcomeAnimation() {
     if (!isLanguageLocked) return
 
     if (cycleRef.current) clearInterval(cycleRef.current)
-    setPhase('frozen')
-    setDisplayWord(WORD_FOR_LANG[language])
+    const word = WORD_FOR_VOICE[voiceLanguageFromLocale(language)]
+    queueMicrotask(() => {
+      setPhase('frozen')
+      setDisplayWord(word)
+    })
 
     freezeRef.current = setTimeout(() => {
       setPhase('gone')

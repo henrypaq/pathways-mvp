@@ -1,3 +1,5 @@
+import type { PreferredLocaleCode } from '@/lib/loginLocales'
+
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking'
 
 /**
@@ -5,7 +7,7 @@ export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking'
  * Voice, UI copy, and future localized features should read this.
  */
 export type AppProfilePreferences = {
-  preferred_language?: 'en' | 'fr'
+  preferred_language?: PreferredLocaleCode
 }
 
 export interface PathwaysProfile {

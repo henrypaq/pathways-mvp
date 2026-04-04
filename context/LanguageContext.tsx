@@ -8,8 +8,13 @@ import {
   useCallback,
 } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  isPreferredLocaleCode,
+  localeFromNavigatorLanguage,
+  type PreferredLocaleCode,
+} from '@/lib/loginLocales'
 
-export type Language = 'en' | 'fr'
+export type Language = PreferredLocaleCode
 
 const STORAGE_KEY = 'pathways_preferred_language'
 
@@ -54,8 +59,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
           .eq('user_id', user.id)
           .maybeSingle()
 
-        const dbLang = (row?.data as Record<string, unknown> | undefined)?.preferred_language
-        if (dbLang === 'en' || dbLang === 'fr') {
+        const raw = (row?.data as Record<string, unknown> | undefined)?.preferred_language
+        const dbLang = typeof raw === 'string' && isPreferredLocaleCode(raw) ? raw : null
+        if (dbLang) {
           if (!cancelled) {
             setLanguageState(dbLang)
             setIsLanguageLocked(true)
@@ -70,16 +76,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const stored = localStorage.getItem(STORAGE_KEY)
-          if (stored === 'en' || stored === 'fr') {
+          if (stored && isPreferredLocaleCode(stored)) {
             if (!cancelled) {
               setLanguageState(stored)
               setIsLanguageLocked(true)
             }
             await savePreferredLanguageToProfile(stored)
           } else if (typeof navigator !== 'undefined') {
-            const detected = navigator.language ?? ''
-            if (detected.startsWith('fr') && !cancelled) {
-              setLanguageState('fr')
+            const detected = localeFromNavigatorLanguage(navigator.language ?? '')
+            if (detected && !cancelled) {
+              setLanguageState(detected)
             }
           }
         } catch {
@@ -90,15 +96,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored === 'en' || stored === 'fr') {
+        if (stored && isPreferredLocaleCode(stored)) {
           if (!cancelled) {
             setLanguageState(stored)
             setIsLanguageLocked(true)
           }
         } else if (typeof navigator !== 'undefined') {
-          const detected = navigator.language ?? ''
-          if (detected.startsWith('fr') && !cancelled) {
-            setLanguageState('fr')
+          const detected = localeFromNavigatorLanguage(navigator.language ?? '')
+          if (detected && !cancelled) {
+            setLanguageState(detected)
           }
         }
       } catch {
@@ -114,14 +120,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         void (async () => {
           try {
             const stored = localStorage.getItem(STORAGE_KEY)
-            if (stored !== 'en' && stored !== 'fr') return
+            if (!stored || !isPreferredLocaleCode(stored)) return
             const { data: row } = await supabase
               .from('profiles')
               .select('data')
               .eq('user_id', session.user.id)
               .maybeSingle()
-            const dbLang = (row?.data as Record<string, unknown> | undefined)?.preferred_language
-            if (dbLang === 'en' || dbLang === 'fr') return
+            const raw = (row?.data as Record<string, unknown> | undefined)?.preferred_language
+            const dbLang = typeof raw === 'string' && isPreferredLocaleCode(raw) ? raw : null
+            if (dbLang) return
             await savePreferredLanguageToProfile(stored)
           } catch {
             /* ignore */

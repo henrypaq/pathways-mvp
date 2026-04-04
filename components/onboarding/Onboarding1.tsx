@@ -11,14 +11,13 @@ import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
 import { useLanguage, type Language } from "@/context/LanguageContext";
+import {
+  voiceLanguageFromLocale,
+  type VoiceLanguage,
+} from "@/lib/voiceLocale";
 
-// Welcome messages spoken when the user picks a language.
-// Voice: ElevenLabs "Sarah" (EXAVITQu4vr4xnSDxMaL) via eleven_flash_v2_5 — a multilingual
-// model that natively supports EN + FR without any voice change.
-// (The voices_read permission was missing from the API key so we couldn't query the voice
-// endpoint directly, but eleven_flash_v2_5 is documented to support 32 languages including
-// both English and French.)
-const WELCOME_TEXT: Record<Language, string> = {
+// Welcome messages spoken when the user picks a language (English vs French voice only for now).
+const WELCOME_TEXT: Record<VoiceLanguage, string> = {
   en: "Welcome to Pathways. I'm here to guide you through your immigration journey.",
   fr: "Bienvenue sur Pathways. Je suis ici pour vous accompagner dans votre parcours d'immigration.",
 }
@@ -27,13 +26,14 @@ async function playWelcomeMessage(
   lang: Language,
   signal: AbortSignal,
 ): Promise<void> {
-  const text = WELCOME_TEXT[lang]
+  const voice = voiceLanguageFromLocale(lang)
+  const text = WELCOME_TEXT[voice]
   try {
     const res = await fetch('/api/voice/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal,
-      body: JSON.stringify({ text, lang }),
+      body: JSON.stringify({ text, lang: voice }),
     })
     if (!res.ok) return
     const buffer = await res.arrayBuffer()
