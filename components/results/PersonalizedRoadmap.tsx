@@ -33,7 +33,7 @@ function RoadmapStepRow({ step, index, total }: { step: RecommendedRoadmapStep; 
         {/* Step header — always visible */}
         <button
           onClick={() => setExpanded((e) => !e)}
-          className="w-full flex items-start gap-3 text-left group py-2 px-1 rounded-[8px] hover:bg-white/55 transition-colors"
+          className="w-full flex items-start gap-3 text-left group py-2 px-1 rounded-[8px] hover:bg-[#FAFAFA] transition-colors"
         >
           <div className="relative z-10 mt-0.5 flex-shrink-0">
             <StatusIcon size={16} className={color} />
@@ -111,9 +111,9 @@ export function PersonalizedRoadmap({ steps, pathwayName }: PersonalizedRoadmapP
   const progressPct = steps.length > 0 ? Math.round((completedCount / steps.length) * 100) : 0
 
   return (
-    <div className="rounded-2xl border border-[var(--ui-border-strong)] bg-[var(--ui-page)] overflow-hidden shadow-none">
+    <div className="rounded-2xl border border-[#E5E5E5] bg-white overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-[var(--ui-border)]">
+      <div className="px-5 py-4 border-b border-[#F5F5F5]">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-[13px] font-semibold text-[#171717]">Your Roadmap</h3>
           <span className="text-[11px] text-[#A3A3A3]">{steps.length} steps</span>
@@ -122,7 +122,7 @@ export function PersonalizedRoadmap({ steps, pathwayName }: PersonalizedRoadmapP
 
         {/* Progress bar */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-1.5 bg-[var(--ui-border)] rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-[#534AB7] rounded-full"
               initial={{ width: 0 }}

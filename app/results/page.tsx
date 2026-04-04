@@ -286,13 +286,15 @@ export default function ResultsPage() {
           ) : result ? (
             <motion.div
               key="results"
-              className="h-full flex flex-col lg:flex-row gap-0 overflow-y-auto lg:overflow-hidden"
+              className="h-full min-h-0 overflow-y-auto overscroll-y-contain bg-[var(--ui-page)]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4 }}
             >
-              {/* Left panel — pathway cards */}
-              <div className="flex-1 overflow-y-auto px-6 py-6 min-w-0 bg-[var(--ui-page)]">
+              {/* One scroll column: scrollbar at viewport right; sidebar is sticky so it floats over the scrolling page */}
+              <div className="flex flex-col lg:flex-row lg:items-start gap-8 px-6 py-6 pb-10 lg:pb-8">
+              {/* Main column — pathway cards */}
+              <div className="flex-1 min-w-0">
                 {/* Profile summary */}
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
@@ -355,26 +357,28 @@ export default function ResultsPage() {
                 )}
               </div>
 
-              {/* Right panel — roadmap */}
-              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--ui-border)] overflow-y-auto bg-[var(--ui-page)] px-4 py-6">
+              {/* Sidebar — white roadmap card; sticky on large screens so it stays put while the page scrolls */}
+              <aside className="w-full lg:w-80 lg:max-w-[20rem] shrink-0 lg:sticky lg:top-5 lg:self-start border-t border-[var(--ui-border)] lg:border-t-0 pt-8 lg:pt-0">
                 {selectedPathway && roadmapSteps.length > 0 ? (
                   <motion.div
                     key={selectedPathwayId}
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3 }}
+                    className="lg:max-h-[calc(100dvh-5.5rem)] lg:flex lg:flex-col lg:min-h-0"
                   >
-                    <PersonalizedRoadmap
-                      steps={roadmapSteps}
-                      pathwayName={selectedPathway.name}
-                    />
+                    <div className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+                      <PersonalizedRoadmap
+                        steps={roadmapSteps}
+                        pathwayName={selectedPathway.name}
+                      />
+                    </div>
 
-                    {/* CTA */}
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="mt-4"
+                      className="mt-4 shrink-0"
                     >
                       <button
                         onClick={() => router.push(`/dashboard?pathway=${encodeURIComponent(selectedPathwayId ?? '')}`)}
@@ -389,13 +393,14 @@ export default function ResultsPage() {
                     </motion.div>
                   </motion.div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-12">
+                  <div className="flex flex-col items-center justify-center text-center gap-3 py-10 lg:py-6 rounded-2xl border border-dashed border-[var(--ui-border-strong)] bg-white/80 px-4">
                     <div className="w-10 h-10 rounded-full bg-[#F5F5F5] flex items-center justify-center">
                       <Sparkles size={16} className="text-[#A3A3A3]" />
                     </div>
                     <p className="text-[12px] text-[#A3A3A3]">Select a pathway to see your personalized roadmap</p>
                   </div>
                 )}
+              </aside>
               </div>
             </motion.div>
           ) : null}
