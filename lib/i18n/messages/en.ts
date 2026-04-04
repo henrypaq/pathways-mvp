@@ -5,6 +5,8 @@ export const enMessages = {
   // ── Navigation ────────────────────────────────────────────────────────────
   'nav.brand': 'Pathways',
   'nav.home': 'Home',
+  'nav.account': 'Account',
+  'nav.signIn': 'Sign in',
 
   // ── Login / auth ──────────────────────────────────────────────────────────
   'login.title': 'Sign in to Pathways',
@@ -67,7 +69,7 @@ export const enMessages = {
 
   // ── Voice onboarding ──────────────────────────────────────────────────────
   'voice.browserWarning':
-    'Voice mode requires Chrome or Edge. Please switch browsers or choose another mode.',
+    'Voice mode requires Chrome or Edge. Please switch browsers or',
   'voice.hintTap': 'Tap the orb to speak after Pathways finishes each message.',
   'voice.hintContinue': "Tap again when you're ready to continue.",
   'voice.seePathways': 'See my pathways \u2192',
@@ -311,6 +313,18 @@ export const enMessages = {
   'docs.required.police_certificate.hint': "From every country you've lived in for 6+ months",
   'docs.required.photos': 'Passport Photos',
   'docs.required.photos.hint': '2 identical photos meeting IRCC specifications',
+
+  // ── Account page ──────────────────────────────────────────────────────────
+  'account.title': 'Account',
+  'account.email': 'Email',
+  'account.memberSince': 'Member since',
+  'account.continueJourney': 'Continue your journey',
+  'account.resetTitle': 'Reset Pathways',
+  'account.resetDesc': 'Clear your profile and recommendations and begin onboarding again from scratch.',
+  'account.savedNote': 'Your answers are saved to your Pathways profile.',
+  'account.defaultName': 'Pathways member',
+  'account.signOut': 'Sign out',
+  'account.signingOut': 'Signing out\u2026',
 
   // ── Start over button ─────────────────────────────────────────────────────
   'startover.confirm.title': 'Erase all data?',

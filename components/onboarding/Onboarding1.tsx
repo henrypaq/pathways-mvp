@@ -10,11 +10,8 @@ import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
-<<<<<<< HEAD
 import { useLanguage } from "@/context/LanguageContext";
-=======
 import { useI18n } from "@/context/I18nContext";
->>>>>>> 0856c1525bbb16de7ea709f8aa69baf60331fc73
 
 function VoiceMode() {
   const {
@@ -29,6 +26,7 @@ function VoiceMode() {
   } = useVoiceOnboarding();
   const router = useRouter();
   const { language } = useLanguage();
+  const { t } = useI18n();
   const isFirstRender = useRef(true);
 
   // Language is always locked before the user reaches voice mode — fire immediately on mount
@@ -36,7 +34,6 @@ function VoiceMode() {
     triggerWelcome();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-<<<<<<< HEAD
   // Mid-session language switch: stop current audio and re-greet in new language
   useEffect(() => {
     if (isFirstRender.current) {
@@ -46,9 +43,6 @@ function VoiceMode() {
     restartConversation();
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-=======
-  const { t } = useI18n();
->>>>>>> 0856c1525bbb16de7ea709f8aa69baf60331fc73
   const isSpeechSupported =
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();
 
