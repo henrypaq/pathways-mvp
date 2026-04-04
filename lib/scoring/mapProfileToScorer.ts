@@ -55,23 +55,33 @@ function mapEducationLevel(raw: unknown): UserProfile['educationLevel'] | undefi
 }
 
 // FAMILY_OPTIONS in ManualProfileForm: ['Single', 'Married', 'Married with children', 'Single parent']
-// Note: hasCanadianSpouseOrPartner and hasCanadianCitizenOrPRRelative are not captured
-// by the current onboarding form and remain undefined. These are the hard gates for
-// Family Sponsorship scoring — users who genuinely qualify will need a future onboarding step.
-function mapFamilySituation(raw: unknown): UserProfile['familySituation'] | undefined {
+// has_canadian_sponsor and has_canadian_relative are now collected in onboarding
+// and injected into familySituation by mapProfileToScorer().
+function mapFamilySituation(
+  raw: unknown,
+  hasCanadianSponsor: boolean | undefined,
+  hasCanadianRelative: boolean | undefined,
+): UserProfile['familySituation'] | undefined {
   const s = raw as string | undefined
-  if (!s) return undefined
-  const lower = s.toLowerCase()
+  const lower = s?.toLowerCase() ?? ''
+
+  const relationshipType: UserProfile['familySituation'] = {
+    hasCanadianSpouseOrPartner: hasCanadianSponsor ?? false,
+    hasCanadianCitizenOrPRRelative: hasCanadianRelative ?? false,
+  }
+
   if (lower === 'married with children') {
-    return { relationshipType: 'spouse', hasDependents: true }
+    return { ...relationshipType, relationshipType: 'spouse', hasDependents: true }
   }
   if (lower === 'married') {
-    return { relationshipType: 'spouse', hasDependents: false }
+    return { ...relationshipType, relationshipType: 'spouse', hasDependents: false }
   }
   if (lower === 'single parent') {
-    return { hasDependents: true }
+    return { ...relationshipType, hasDependents: true }
   }
-  return undefined // 'Single' — no family situation context
+  // Even if no family_situation string, still surface canadian connections
+  if (hasCanadianSponsor || hasCanadianRelative) return relationshipType
+  return undefined
 }
 
 // Builds a LanguageTest from the flat key-value fields that the voice/chat AI emits
@@ -141,9 +151,13 @@ export function mapProfileToScorer(
     // Source: profiles.data.occupation — free-text job title from TextInput
     occupation: (data.occupation as string) || undefined,
 
-    // nocTeer is not collected in the current onboarding.
-    // isSkilled() falls back to checking occupation string when nocTeer is undefined.
-    nocTeer: undefined,
+    // Source: profiles.data.occupation_skill_level — 'professional' | 'skilled_trade' | 'other'
+    // Maps to a representative NOC TEER value for isSkilled() and scoring.
+    // professional → TEER 1 (professionals/managers), skilled_trade → TEER 3, other → TEER 4
+    nocTeer: data.occupation_skill_level === 'professional' ? 1
+           : data.occupation_skill_level === 'skilled_trade' ? 3
+           : data.occupation_skill_level === 'other' ? 4
+           : undefined,
 
     // Source: profiles.data.is_employed — boolean, set by YesNoToggle
     currentlyEmployed: typeof data.is_employed === 'boolean' ? data.is_employed : undefined,
@@ -151,8 +165,12 @@ export function mapProfileToScorer(
     // Source: profiles.data.education_level — one of "High school"|"Bachelor's"|"Master's"|"PhD"|"Other"
     educationLevel: mapEducationLevel(data.education_level),
 
-    // Source: profiles.data.family_situation — one of 'Single'|'Married'|'Married with children'|'Single parent'
-    familySituation: mapFamilySituation(data.family_situation),
+    // Source: profiles.data.family_situation + has_canadian_sponsor + has_canadian_relative
+    familySituation: mapFamilySituation(
+      data.family_situation,
+      typeof data.has_canadian_sponsor === 'boolean' ? data.has_canadian_sponsor : undefined,
+      typeof data.has_canadian_relative === 'boolean' ? data.has_canadian_relative : undefined,
+    ),
 
     // Source: profiles.data.has_job_offer — boolean, set by YesNoToggle
     jobOfferInCanada: typeof data.has_job_offer === 'boolean' ? data.has_job_offer : undefined,

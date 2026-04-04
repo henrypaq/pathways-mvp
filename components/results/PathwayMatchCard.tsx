@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react'
 import type { PathwayMatch } from '@/lib/types'
 
 interface PathwayMatchCardProps {
@@ -72,14 +72,33 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
       transition={{ duration: 0.4, delay: rank * 0.1 }}
       whileHover={{ y: -2 }}
       onClick={onSelect}
-      className={`relative cursor-pointer rounded-[16px] border p-5 transition-all duration-200 ${
-        isSelected
-          ? 'border-[#534AB7] shadow-[0_0_0_3px_rgba(83,74,183,0.12),0_4px_20px_rgba(83,74,183,0.12)] bg-white'
-          : 'border-[#E5E5E5] bg-white hover:border-[#534AB7]/40 hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]'
+      className={`relative cursor-pointer rounded-[16px] border transition-all duration-200 ${
+        pathway.isVerified
+          ? isSelected
+            ? 'border-[#1D9E75] shadow-[0_0_0_3px_rgba(29,158,117,0.12),0_4px_20px_rgba(29,158,117,0.12)] bg-white'
+            : 'border-[#1D9E75]/40 bg-white hover:border-[#1D9E75] hover:shadow-[0_2px_12px_rgba(29,158,117,0.08)]'
+          : isSelected
+            ? 'border-[#534AB7] shadow-[0_0_0_3px_rgba(83,74,183,0.12),0_4px_20px_rgba(83,74,183,0.12)] bg-white'
+            : 'border-[#E5E5E5] bg-white hover:border-[#534AB7]/40 hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]'
       }`}
     >
-      {/* Rank badge */}
-      {rank === 0 && (
+      {/* Verified pathway banner */}
+      {pathway.isVerified && (
+        <div className="flex items-center gap-1.5 px-5 py-2 bg-[#E1F5EE] rounded-t-[15px] border-b border-[#1D9E75]/20">
+          <ShieldCheck size={12} className="text-[#1D9E75] flex-shrink-0" />
+          <span className="text-[10px] font-semibold text-[#1D9E75] uppercase tracking-wide">
+            Verified Immigration Pathway
+          </span>
+          {rank === 0 && (
+            <span className="ml-auto text-[10px] font-semibold text-[#1D9E75]">Best match</span>
+          )}
+        </div>
+      )}
+
+      <div className="p-5">
+
+      {/* Rank badge (non-verified cards only) */}
+      {rank === 0 && !pathway.isVerified && (
         <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 bg-[#534AB7] rounded-full text-[10px] font-semibold text-white">
           Best match
         </div>
@@ -193,6 +212,7 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
           ))}
         </div>
       )}
+      </div>
     </motion.div>
   )
 }

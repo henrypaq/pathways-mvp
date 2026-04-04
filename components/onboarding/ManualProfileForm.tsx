@@ -38,8 +38,11 @@ interface FormValues {
   occupation: string
   is_employed: string
   years_of_experience: string  // '' | '0' | '1' | '2' | '3' | '4' | '5+'
+  occupation_skill_level: string  // '' | 'professional' | 'skilled_trade' | 'other'
   education_level: string
   family_situation: string
+  has_canadian_sponsor: string  // '' | 'yes' | 'no'
+  has_canadian_relative: string // '' | 'yes' | 'no'
   has_job_offer: string
   current_visa_status: string
 }
@@ -60,8 +63,11 @@ const EMPTY: FormValues = {
   occupation: '',
   is_employed: '',
   years_of_experience: '',
+  occupation_skill_level: '',
   education_level: '',
   family_situation: '',
+  has_canadian_sponsor: '',
+  has_canadian_relative: '',
   has_job_offer: '',
   current_visa_status: '',
 }
@@ -81,6 +87,12 @@ const SCORE_HINTS: Record<string, string> = {
   TCF_Canada: '0–699',
   other: 'your score',
 }
+const SKILL_LEVEL_OPTIONS = [
+  { id: 'professional', label: 'Professional / managerial', hint: 'e.g. engineer, nurse, accountant, manager' },
+  { id: 'skilled_trade', label: 'Skilled trade / technical', hint: 'e.g. electrician, plumber, chef, technician' },
+  { id: 'other', label: 'Other / service work', hint: 'e.g. retail, admin, labour, service' },
+] as const
+
 const YEARS_OPTIONS = ['0', '1', '2', '3', '4', '5+'] as const
 const YEARS_LABELS: Record<string, string> = {
   '0': '< 1 yr',
@@ -267,8 +279,11 @@ export function ManualProfileForm() {
       language_test_overall: stored.language_test?.overallScore?.toString() ?? '',
       language_test_self: stored.language_test?.selfAssessment ?? '',
       years_of_experience: stored.years_of_experience ?? '',
+      occupation_skill_level: stored.occupation_skill_level ?? '',
       education_level: String(stored.education_level ?? ''),
       family_situation: String(stored.family_situation ?? ''),
+      has_canadian_sponsor: stored.has_canadian_sponsor === true ? 'yes' : stored.has_canadian_sponsor === false ? 'no' : '',
+      has_canadian_relative: stored.has_canadian_relative === true ? 'yes' : stored.has_canadian_relative === false ? 'no' : '',
       has_job_offer: stored.has_job_offer === true ? 'yes' : stored.has_job_offer === false ? 'no' : '',
       current_visa_status: String(stored.current_visa_status ?? ''),
     }))
@@ -318,8 +333,13 @@ export function ManualProfileForm() {
     if (values.is_employed === 'yes') profile.is_employed = true
     if (values.is_employed === 'no') profile.is_employed = false
     if (values.years_of_experience) profile.years_of_experience = values.years_of_experience as '0' | '1' | '2' | '3' | '4' | '5+'
+    if (values.occupation_skill_level) profile.occupation_skill_level = values.occupation_skill_level as 'professional' | 'skilled_trade' | 'other'
     if (values.education_level) profile.education_level = values.education_level
     if (values.family_situation) profile.family_situation = values.family_situation
+    if (values.has_canadian_sponsor === 'yes') profile.has_canadian_sponsor = true
+    if (values.has_canadian_sponsor === 'no') profile.has_canadian_sponsor = false
+    if (values.has_canadian_relative === 'yes') profile.has_canadian_relative = true
+    if (values.has_canadian_relative === 'no') profile.has_canadian_relative = false
     if (values.has_job_offer === 'yes') profile.has_job_offer = true
     if (values.has_job_offer === 'no') profile.has_job_offer = false
     if (values.current_visa_status.trim()) profile.current_visa_status = values.current_visa_status.trim()
@@ -567,9 +587,30 @@ export function ManualProfileForm() {
                           transition={{ duration: 0.25, ease: 'easeInOut' }}
                           className="overflow-hidden"
                         >
-                          <Field label="Years of relevant work experience">
-                            <YearsSelector value={values.years_of_experience} onChange={set('years_of_experience')} />
-                          </Field>
+                          <div className="flex flex-col gap-4">
+                            <Field label="Years of relevant work experience">
+                              <YearsSelector value={values.years_of_experience} onChange={set('years_of_experience')} />
+                            </Field>
+                            <Field label="Type of work">
+                              <div className="flex flex-col gap-2">
+                                {SKILL_LEVEL_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => set('occupation_skill_level')(opt.id)}
+                                    className={`flex flex-col items-start px-3 py-2.5 text-sm rounded-lg border transition-all duration-150 text-left ${
+                                      values.occupation_skill_level === opt.id
+                                        ? 'bg-[#534AB7] text-white border-[#534AB7]'
+                                        : 'bg-[#F9F9F9] text-gray-600 border-[#E5E5E5] hover:border-[#534AB7] hover:text-[#534AB7]'
+                                    }`}
+                                  >
+                                    <span className="font-medium">{opt.label}</span>
+                                    <span className={`text-xs mt-0.5 ${values.occupation_skill_level === opt.id ? 'text-white/70' : 'text-gray-400'}`}>{opt.hint}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </Field>
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -580,6 +621,14 @@ export function ManualProfileForm() {
 
                     <Field label="Family situation">
                       <SelectInput value={values.family_situation} onChange={set('family_situation')} options={FAMILY_OPTIONS} />
+                    </Field>
+
+                    <Field label="Spouse or partner is a Canadian citizen or PR?">
+                      <YesNoToggle value={values.has_canadian_sponsor} onChange={set('has_canadian_sponsor')} />
+                    </Field>
+
+                    <Field label="Parent, sibling, or adult child is a Canadian citizen or PR?">
+                      <YesNoToggle value={values.has_canadian_relative} onChange={set('has_canadian_relative')} />
                     </Field>
 
                     <Field label="Job offer in destination country">
