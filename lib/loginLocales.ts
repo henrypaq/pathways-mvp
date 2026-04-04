@@ -55,6 +55,13 @@ export function isPreferredLocaleCode(v: string): v is PreferredLocaleCode {
   return LOCALE_SET.has(v)
 }
 
+/** Human-readable label for profile UI (flag + name). */
+export function preferredLocaleDisplay(code: string | undefined): string {
+  if (!code || !isPreferredLocaleCode(code)) return 'English (default)'
+  const row = LOGIN_LANGUAGE_OPTIONS.find((o) => o.value === code)
+  return row ? `${row.flag} ${row.label}` : code
+}
+
 /** Map browser language to a stored locale when the user has not chosen one yet. */
 export function localeFromNavigatorLanguage(navLang: string): PreferredLocaleCode | null {
   const base = navLang.split(/[-_]/)[0]?.toLowerCase() ?? ''

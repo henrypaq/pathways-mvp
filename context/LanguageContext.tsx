@@ -61,6 +61,27 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
         const raw = (row?.data as Record<string, unknown> | undefined)?.preferred_language
         const dbLang = typeof raw === 'string' && isPreferredLocaleCode(raw) ? raw : null
+
+        let storedLang: PreferredLocaleCode | null = null
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY)
+          if (stored && isPreferredLocaleCode(stored)) storedLang = stored
+        } catch {
+          /* ignore */
+        }
+
+        // Prefer explicit browser choice (e.g. login page) over DB so sign-in saves the picker value.
+        if (storedLang) {
+          if (!cancelled) {
+            setLanguageState(storedLang)
+            setIsLanguageLocked(true)
+          }
+          if (storedLang !== dbLang) {
+            await savePreferredLanguageToProfile(storedLang)
+          }
+          return
+        }
+
         if (dbLang) {
           if (!cancelled) {
             setLanguageState(dbLang)
@@ -75,14 +96,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
-          const stored = localStorage.getItem(STORAGE_KEY)
-          if (stored && isPreferredLocaleCode(stored)) {
-            if (!cancelled) {
-              setLanguageState(stored)
-              setIsLanguageLocked(true)
-            }
-            await savePreferredLanguageToProfile(stored)
-          } else if (typeof navigator !== 'undefined') {
+          if (typeof navigator !== 'undefined') {
             const detected = localeFromNavigatorLanguage(navigator.language ?? '')
             if (detected && !cancelled) {
               setLanguageState(detected)
@@ -121,14 +135,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
           try {
             const stored = localStorage.getItem(STORAGE_KEY)
             if (!stored || !isPreferredLocaleCode(stored)) return
-            const { data: row } = await supabase
-              .from('profiles')
-              .select('data')
-              .eq('user_id', session.user.id)
-              .maybeSingle()
-            const raw = (row?.data as Record<string, unknown> | undefined)?.preferred_language
-            const dbLang = typeof raw === 'string' && isPreferredLocaleCode(raw) ? raw : null
-            if (dbLang) return
             await savePreferredLanguageToProfile(stored)
           } catch {
             /* ignore */

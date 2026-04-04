@@ -5,6 +5,7 @@ import { StartOverButton } from '../StartOverButton'
 import { ProfileEditForm } from './ProfileEditForm'
 import { DashboardSubnav } from '@/components/dashboard/DashboardSubnav'
 import { PageSurface } from '@/components/ui/PageSurface'
+import { preferredLocaleDisplay } from '@/lib/loginLocales'
 import Link from 'next/link'
 
 export default async function ProfilePage() {
@@ -23,6 +24,12 @@ export default async function ProfilePage() {
     .single()
 
   if (!profile) redirect('/onboarding')
+
+  const profileData = (profile.data ?? {}) as Record<string, unknown>
+  const savedLang =
+    typeof profileData.preferred_language === 'string'
+      ? profileData.preferred_language
+      : undefined
 
   return (
     <PageSurface surface="app" fixed>
@@ -50,8 +57,12 @@ export default async function ProfilePage() {
             <p className="text-[12px] text-[#A3A3A3] mt-0.5">
               Keep your profile accurate to get the best pathway recommendations.
             </p>
+            <p className="text-[13px] text-[#171717] mt-2">
+              <span className="text-[#A3A3A3]">Saved language preference:</span>{' '}
+              <span className="font-medium">{preferredLocaleDisplay(savedLang)}</span>
+            </p>
           </div>
-          <ProfileEditForm initialData={(profile.data ?? {}) as Record<string, unknown>} />
+          <ProfileEditForm initialData={profileData} />
         </main>
       </div>
     </PageSurface>

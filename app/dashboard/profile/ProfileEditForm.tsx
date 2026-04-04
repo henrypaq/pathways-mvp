@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { updateProfile, type ProfileEditData } from './actions'
+import { ProfilePreferredLanguage } from './ProfilePreferredLanguage'
 
 function Field({
   label,
@@ -158,6 +159,8 @@ export function ProfileEditForm({ initialData }: { initialData: Record<string, u
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl pb-6">
+      <ProfilePreferredLanguage />
+
       <Card title="Personal Information">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Nationality" id="field-nationality">
