@@ -27,6 +27,7 @@ interface Props {
   caseId: string
   userId: string
   onCountChange?: (count: number) => void
+  onTypesChange?: (types: Set<string>) => void
 }
 
 const REQUIRED_DOCS = [
@@ -92,7 +93,7 @@ function summarizeExtracted(docType: string, extracted: Record<string, unknown>)
   }
 }
 
-export function DocumentsManager({ initialDocuments, caseId, userId, onCountChange }: Props) {
+export function DocumentsManager({ initialDocuments, caseId, userId, onCountChange, onTypesChange }: Props) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments)
   const [selectedType, setSelectedType] = useState('')
   const [dragOver, setDragOver] = useState(false)
@@ -108,7 +109,8 @@ export function DocumentsManager({ initialDocuments, caseId, userId, onCountChan
 
   useEffect(() => {
     onCountChange?.(documents.length)
-  }, [documents.length, onCountChange])
+    onTypesChange?.(new Set(documents.map((d) => d.type).filter(Boolean) as string[]))
+  }, [documents.length, onCountChange, onTypesChange, documents])
 
   const uploadedTypes = new Set(documents.map((d) => d.type))
 

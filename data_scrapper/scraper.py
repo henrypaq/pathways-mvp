@@ -124,6 +124,22 @@ def html_to_markdown(soup: BeautifulSoup, url: str, display_name: str) -> str:
         elif tag == "table":
             _process_table(node)
 
+        elif tag == "details":
+            # Canada.ca uses <details>/<summary> to hide CRS scoring tables and
+            # other key content behind expand panels. Extract summary as a heading
+            # then recurse into the body so the content gets chunked.
+            summary = node.find("summary", recursive=False)
+            if summary:
+                text = summary.get_text(strip=True)
+                if text:
+                    lines.append("")
+                    lines.append("### " + text)
+                    lines.append("")
+            for child in node.children:
+                if isinstance(child, Tag) and child.name == "summary":
+                    continue
+                process_node(child)
+
         elif tag in ("div", "section", "article", "aside"):
             for child in node.children:
                 process_node(child)
