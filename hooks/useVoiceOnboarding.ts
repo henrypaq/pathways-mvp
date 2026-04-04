@@ -87,6 +87,31 @@ function extractProfileDeltas(text: string): Record<string, unknown>[] {
   return results
 }
 
+// Fix A: safe sentence boundary — only split on punctuation followed by whitespace
+// AND an uppercase letter. Avoids splitting on "Mr." "Dr." "e.g." decimals, etc.
+const sentenceBoundary = /([.!?])\s+(?=[A-ZÀ-Ü])/
+
+function extractCompleteSentences(buffer: string): {
+  sentences: string[]
+  remainder: string
+} {
+  const sentences: string[] = []
+  let remaining = buffer
+
+  while (remaining.length > 15) {
+    const match = sentenceBoundary.exec(remaining)
+    if (!match) break
+
+    const sentence = remaining.slice(0, match.index + 1).trim()
+    if (sentence.length >= 15) {
+      sentences.push(sentence)
+    }
+    remaining = remaining.slice(match.index + 2).trimStart()
+  }
+
+  return { sentences, remainder: remaining }
+}
+
 export interface UseVoiceOnboardingReturn {
   orbState: OrbState
   profile: Partial<PathwaysProfile>
@@ -204,7 +229,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         })
       }
 
-      // Streaming path via MediaSource
+      // Fix C: hardened MediaSource streaming path
       return new Promise<void>((resolve, reject) => {
         if (!mountedRef.current || signal.aborted) { resolve(); return }
 
@@ -218,15 +243,51 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         const audio = new Audio(url)
         playingAudioRef.current = audio
 
+        // Track whether the full stream was written before audio.onerror fires,
+        // so we can resolve (not reject) on a normal end-of-stream signal.
+        let streamDone = false
+        let sourceBuffer!: SourceBuffer
+
+        // Wait for sourceBuffer to finish any in-progress operation before touching it.
+        const waitForNotUpdating = () =>
+          new Promise<void>(r => {
+            if (!sourceBuffer.updating) { r(); return }
+            sourceBuffer.addEventListener('updateend', () => r(), { once: true })
+          })
+
+        // Append a chunk, waiting for any previous update to finish first.
+        // QuotaExceededError / InvalidStateError are caught per-chunk so one bad
+        // chunk does not crash the entire sentence.
+        const appendChunk = async (chunk: Uint8Array) => {
+          await waitForNotUpdating()
+          try {
+            sourceBuffer.appendBuffer(chunk)
+            await waitForNotUpdating()
+          } catch (err) {
+            console.warn('[audio] appendBuffer error:', err)
+          }
+        }
+
+        // Close the MediaSource only after any pending update finishes.
+        const endStream = async () => {
+          await waitForNotUpdating()
+          if (mediaSource.readyState === 'open') {
+            mediaSource.endOfStream()
+          }
+        }
+
         audio.onended = () => {
           URL.revokeObjectURL(url)
           if (playingAudioRef.current === audio) playingAudioRef.current = null
           resolve()
         }
-        audio.onerror = () => {
+        audio.onerror = (e) => {
           URL.revokeObjectURL(url)
           if (playingAudioRef.current === audio) playingAudioRef.current = null
-          resolve() // resolve (not reject) so a TTS error doesn't kill the turn
+          // If the stream already finished writing, this is a normal end-of-stream
+          // signal from the browser — resolve so the sentence chain continues.
+          if (streamDone) resolve()
+          else reject(e)
         }
 
         signal.addEventListener('abort', () => {
@@ -236,54 +297,60 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
           resolve()
         }, { once: true })
 
-        mediaSource.addEventListener('sourceopen', () => {
-          let sourceBuffer: SourceBuffer
+        mediaSource.addEventListener('sourceopen', async () => {
           try {
             sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg')
           } catch (err) {
+            // MediaSource not supported for this codec — caller falls back
+            URL.revokeObjectURL(url)
             reject(err)
             return
           }
 
           const reader = response.body!.getReader()
 
-          const pump = async (): Promise<void> => {
-            try {
-              while (true) {
-                if (signal.aborted) {
-                  if (mediaSource.readyState === 'open') mediaSource.endOfStream()
-                  resolve()
-                  return
-                }
-                const { done, value } = await reader.read()
-                if (done) {
-                  if (sourceBuffer.updating) {
-                    await new Promise<void>(r =>
-                      sourceBuffer.addEventListener('updateend', () => r(), { once: true })
-                    )
-                  }
-                  if (mediaSource.readyState === 'open') mediaSource.endOfStream()
-                  return
-                }
-                if (sourceBuffer.updating) {
-                  await new Promise<void>(r =>
-                    sourceBuffer.addEventListener('updateend', () => r(), { once: true })
-                  )
-                }
-                sourceBuffer.appendBuffer(value)
-              }
-            } catch (err) {
-              if (!signal.aborted) reject(err)
+          try {
+            // Buffer the first chunk BEFORE calling audio.play() so the audio
+            // element never starts with an empty buffer (Fix C core).
+            const firstChunk = await reader.read()
+            if (firstChunk.done || signal.aborted) {
+              await endStream()
+              resolve()
+              return
             }
-          }
+            await appendChunk(firstChunk.value)
 
-          void pump()
-          audio.play().catch((err) => {
-            // Autoplay blocked or other play error — resolve gracefully
-            console.warn('[voice] audio.play() failed:', err)
-            resolve()
-          })
+            // First chunk is now in the buffer — safe to begin playback.
+            audio.play().catch((err) => {
+              console.warn('[voice] audio.play() failed:', err)
+              resolve()
+            })
+
+            // Stream remaining chunks sequentially, checking abort each iteration.
+            while (true) {
+              if (signal.aborted) {
+                await endStream()
+                resolve()
+                return
+              }
+              const { done, value } = await reader.read()
+              if (done) break
+              await appendChunk(value)
+            }
+
+            await endStream()
+            streamDone = true
+          } catch (err) {
+            if (!signal.aborted) reject(err)
+            else resolve()
+          }
         }, { once: true })
+
+        // Guard: if signal was already aborted before sourceopen fires.
+        if (signal.aborted) {
+          URL.revokeObjectURL(url)
+          resolve()
+        }
       })
     },
     [],
@@ -334,8 +401,20 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
       // while firing TTS on each complete sentence as it arrives.
       let fullText = ''
       let streamBuffer = ''
-      const ttsQueue: Promise<void>[] = []
-      const sentenceRegex = /[^.!?]*[.!?]+/g
+
+      // Fix B: strictly sequential playback chain — sentence N+1 never starts
+      // until sentence N fully completes. No promise is created until its
+      // predecessor resolves, so TTS fetches never run concurrently.
+      let playbackChain = Promise.resolve()
+      let sentenceCount = 0
+
+      const enqueueSentence = (text: string) => {
+        sentenceCount++
+        playbackChain = playbackChain.then(async () => {
+          if (ac.signal.aborted) return
+          await speakSentence(text, languageRef.current, ac.signal)
+        })
+      }
 
       // Fix 1: helper — cleans a sentence fragment and fires a speak request.
       // Returns a Promise that resolves when that sentence's audio has finished playing.
@@ -376,28 +455,22 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         streamBuffer += chunk
         console.log('[voice] chunk received:', chunk)
 
-        // Extract complete sentences from the running buffer and fire TTS immediately
-        const sentences = streamBuffer.match(sentenceRegex)
-        if (sentences) {
-          const lastSentence = sentences[sentences.length - 1]
-          const lastIdx = streamBuffer.lastIndexOf(lastSentence)
-          streamBuffer = streamBuffer.slice(lastIdx + lastSentence.length)
+        // Fix A + B: extract complete sentences using safe boundary detection,
+        // then enqueue each one into the strict sequential playback chain.
+        const { sentences: completeSentences, remainder } = extractCompleteSentences(streamBuffer)
+        streamBuffer = remainder
 
-          for (const sentence of sentences) {
-            const trimmed = sentence.trim()
-            if (!trimmed) continue
-            if (ac.signal.aborted) break
-            // Switch orb to speaking on the first sentence queued
-            if (ttsQueue.length === 0) setOrbTracked('speaking')
-            ttsQueue.push(speakSentence(trimmed, languageRef.current, ac.signal))
-          }
+        for (const sentence of completeSentences) {
+          if (ac.signal.aborted) break
+          if (sentenceCount === 0) setOrbTracked('speaking')
+          enqueueSentence(sentence)
         }
       }
 
       // Flush any remaining text that never ended with punctuation
       if (streamBuffer.trim() && !ac.signal.aborted) {
-        if (ttsQueue.length === 0) setOrbTracked('speaking')
-        ttsQueue.push(speakSentence(streamBuffer.trim(), languageRef.current, ac.signal))
+        if (sentenceCount === 0) setOrbTracked('speaking')
+        enqueueSentence(streamBuffer.trim())
       }
 
       if (!mountedRef.current || ac.signal.aborted) return
@@ -474,15 +547,13 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
 
       if (!mountedRef.current || ac.signal.aborted) return
 
-      // Await all queued TTS promises in order — sentences play sequentially
-      for (const p of ttsQueue) {
-        if (ac.signal.aborted || !mountedRef.current) break
-        await p
-      }
+      // Fix B: await the strict sequential chain — sentence N+1 never starts
+      // until sentence N's audio has fully ended.
+      await playbackChain
 
       // Edge case: Claude returned only tokens with no sentence-ending punctuation
-      // and the flush above didn't catch anything (e.g. empty or pure-token response)
-      if (ttsQueue.length === 0 && cleanText.length > 0 && !ac.signal.aborted) {
+      // and no flush was triggered (e.g. empty or pure-token response)
+      if (sentenceCount === 0 && cleanText.length > 0 && !ac.signal.aborted) {
         setOrbTracked('speaking')
         await speakSentence(cleanText, languageRef.current, ac.signal)
       }
