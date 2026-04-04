@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, ChevronRight, ShieldCheck, Info } from 'lucide-react'
 import type { PathwayMatch } from '@/lib/types'
+import { useI18n } from '@/context/I18nContext'
 
 interface PathwayMatchCardProps {
   pathway: PathwayMatch
@@ -24,6 +25,7 @@ const scoreColor = (score: number) => {
 }
 
 function ScoreRing({ score }: { score: number }) {
+  const { t } = useI18n()
   const r = 28
   const circumference = 2 * Math.PI * r
   const { stroke, text } = scoreColor(score)
@@ -55,13 +57,14 @@ function ScoreRing({ score }: { score: number }) {
         >
           {score}%
         </motion.span>
-        <span className="text-[9px] text-[#A3A3A3] mt-0.5">match</span>
+        <span className="text-[9px] text-[#A3A3A3] mt-0.5">{t('card.match')}</span>
       </div>
     </div>
   )
 }
 
 export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: PathwayMatchCardProps) {
+  const { t } = useI18n()
   const diff = difficultyConfig[pathway.difficulty]
 
   return (
@@ -86,10 +89,10 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
         <div className="flex items-center gap-1.5 px-5 py-2 bg-[#E1F5EE] rounded-t-[15px] border-b border-[#1D9E75]/20">
           <ShieldCheck size={12} className="text-[#1D9E75] flex-shrink-0" />
           <span className="text-[10px] font-semibold text-[#1D9E75] uppercase tracking-wide">
-            Verified Immigration Pathway
+            {t('card.verified')}
           </span>
           {rank === 0 && (
-            <span className="ml-auto text-[10px] font-semibold text-[#1D9E75]">Best match</span>
+            <span className="ml-auto text-[10px] font-semibold text-[#1D9E75]">{t('card.bestMatch')}</span>
           )}
         </div>
       )}
@@ -97,7 +100,7 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
       <div className="p-5">
         {rank === 0 && !pathway.isVerified && (
           <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 bg-[#534AB7] rounded-full text-[10px] font-semibold text-white">
-            Best match
+            {t('card.bestMatch')}
           </div>
         )}
 
@@ -149,7 +152,7 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
                   >
                     <Info size={12} className="text-amber-600 mt-0.5 flex-shrink-0" aria-hidden />
                     <span>
-                      <span className="font-semibold text-amber-800">Tip: </span>
+                      <span className="font-semibold text-amber-800">{t('card.pathwayTip')}: </span>
                       {tip}
                     </span>
                   </li>
@@ -189,7 +192,7 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
                   : 'bg-[#F5F5F5] text-[#525252] hover:bg-[#EEEDFE] hover:text-[#534AB7]'
               }`}
             >
-              {isSelected ? 'Selected' : 'View plan'} <ArrowRight size={10} />
+              {isSelected ? t('card.selected') : t('card.viewPlan')} <ArrowRight size={10} />
             </motion.button>
 
             {pathway.officialUrl && (

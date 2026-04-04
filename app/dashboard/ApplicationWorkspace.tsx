@@ -174,7 +174,7 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
         {pathway.officialUrl && (
           <a href={pathway.officialUrl} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 mt-3 text-[12px] text-[#534AB7] hover:text-[#3C3489] transition-colors font-medium">
-            Official IRCC page <ExternalLink size={11} />
+            {t('workspace.irccPage')} <ExternalLink size={11} />
           </a>
         )}
       </div>
@@ -510,7 +510,11 @@ export function ApplicationWorkspace({
               <span className="w-7 h-7 rounded-full bg-[#534AB7] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                 {activeIndex >= 0 ? activeIndex + 1 : 1}
               </span>
-              <h2 className="text-[18px] font-bold text-[#171717]">{titleForLocation(location, roadmapSteps)}</h2>
+              <h2 className="text-[18px] font-bold text-[#171717]">
+                {location.kind === 'base'
+                  ? ({ pathway: t('workspace.step.pathway'), documents: t('workspace.step.documents'), submission: t('workspace.step.submission') })[location.id]
+                  : roadmapSteps.find((s) => s.id === location.stepId)?.title ?? ''}
+              </h2>
             </div>
 
             {/* Step content */}
