@@ -5,6 +5,7 @@ import { Calendar, Mail, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AccountBackButton } from "@/components/account/AccountBackButton";
+import { StartOverButton } from "@/app/dashboard/StartOverButton";
 import { PageSurface } from "@/components/ui/PageSurface";
 import type { PathwaysProfile } from "@/types/voice";
 
@@ -121,6 +122,15 @@ export default async function AccountPage() {
               <ArrowRight size={16} />
             </Link>
             <SignOutButton />
+            <div className="rounded-[14px] border border-[var(--ui-border)] bg-[var(--ui-panel)] px-4 py-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3] mb-2">
+                Reset Pathways
+              </p>
+              <p className="text-[12px] text-[#737373] leading-snug mb-3">
+                Clear your profile and recommendations and begin onboarding again from scratch.
+              </p>
+              <StartOverButton />
+            </div>
           </div>
 
           <p className="mt-10 text-center text-[11px] leading-relaxed text-[#A3A3A3]">

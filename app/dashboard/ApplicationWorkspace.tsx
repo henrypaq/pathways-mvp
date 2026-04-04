@@ -273,8 +273,7 @@ function FloatingChecklist({ entries, score, onNavigate }: FloatingChecklistProp
 
   return (
     <div
-      className="flex flex-col overflow-hidden max-h-[calc(100vh-6rem)]"
-      style={{ width: '268px', background: '#ffffff', borderRadius: '16px', padding: '20px', flexShrink: 0, border: '1px solid #E5E5E5', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
+      className="flex w-full max-w-[328px] flex-col overflow-hidden max-h-[calc(100vh-6rem)] flex-shrink-0 rounded-2xl border border-[#E5E5E5] bg-white p-5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
     >
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
         Application Score
@@ -465,9 +464,9 @@ export function ApplicationWorkspace({
   const motionKey = activeKey
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFAFA]">
       {/* Full-width progress bar */}
-      <div className="flex-shrink-0 bg-white border-b border-[#EBEBEB] px-6 py-3">
+      <div className="flex-shrink-0 bg-[#FAFAFA] border-b border-[#EBEBEB] px-6 py-3">
         <div className="flex items-center gap-3 w-full">
           <span className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider flex-shrink-0">Progress</span>
           <div className="flex-1 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
@@ -489,8 +488,8 @@ export function ApplicationWorkspace({
         </div>
       </div>
 
-      {/* Body */}
-      <div className="relative flex-1 flex overflow-hidden">
+      {/* Body — single canvas color so sidebar column matches main content */}
+      <div className="relative flex-1 flex overflow-hidden bg-[#FAFAFA] min-h-0">
         {/* Scrollable step content */}
         <div className="flex-1 overflow-y-auto bg-[#FAFAFA] min-w-0">
           <div className="max-w-3xl mx-auto px-8 py-8">
@@ -595,8 +594,8 @@ export function ApplicationWorkspace({
           </div>
         </div>
 
-        {/* Floating checklist panel */}
-        <div className="hidden lg:flex flex-shrink-0 items-start pt-6 pr-6 pl-2">
+        {/* Checklist — wider column, centered in the right rail */}
+        <div className="hidden lg:flex shrink-0 bg-[#FAFAFA] w-[min(400px,36vw)] min-w-[280px] flex-col items-center pt-6 pb-8 pl-3 pr-4 xl:pl-5 xl:pr-10">
           <FloatingChecklist
             entries={sidebarEntries}
             score={score}

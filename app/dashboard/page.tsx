@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { AuthNav } from '@/components/auth/AuthNav'
-import { StartOverButton } from './StartOverButton'
 import { PageSurface } from '@/components/ui/PageSurface'
 import { ApplicationWorkspace } from './ApplicationWorkspace'
 import type { PathwaysProfile } from '@/types/voice'
@@ -92,20 +91,24 @@ export default async function DashboardPage({
     <PageSurface surface="flow" fixed>
       {/* Top nav */}
       <div className="flex-shrink-0 bg-white border-b border-[#EBEBEB] px-6 py-3 flex items-center justify-between gap-4 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href="/results"
-            className="flex items-center gap-1.5 text-[12px] text-[#A3A3A3] hover:text-[#171717] transition-colors flex-shrink-0"
-          >
-            <ArrowLeft size={13} /> Results
-          </Link>
-          <span className="text-[#E5E5E5] flex-shrink-0">/</span>
-          <span className="text-[13px] font-semibold text-[#171717] truncate">
-            {selectedPathway.flag} {selectedPathway.name}
-          </span>
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#A3A3A3]">
+            Application building
+          </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href="/results"
+              className="flex items-center gap-1.5 text-[12px] text-[#A3A3A3] hover:text-[#171717] transition-colors flex-shrink-0"
+            >
+              <ArrowLeft size={13} /> Results
+            </Link>
+            <span className="text-[#E5E5E5] flex-shrink-0">/</span>
+            <span className="text-[13px] font-semibold text-[#171717] truncate">
+              {selectedPathway.flag} {selectedPathway.name}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <StartOverButton />
           <AuthNav />
         </div>
       </div>
