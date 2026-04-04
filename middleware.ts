@@ -11,7 +11,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(fixed);
   }
 
-  return await updateSession(request);
+  try {
+    return await updateSession(request);
+  } catch (err) {
+    console.error("[middleware] updateSession failed:", err);
+    return NextResponse.next({ request });
+  }
 }
 
 export const config = {
