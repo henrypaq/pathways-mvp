@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { text } = await request.json()
+    const { text, lang = 'en' } = await request.json()
 
     // Strip control tokens before sending to ElevenLabs
     const cleaned = text
@@ -14,8 +14,12 @@ export async function POST(request: NextRequest) {
       return new Response(null, { status: 204 })
     }
 
+    const voiceId = lang === 'fr'
+      ? process.env.ELEVENLABS_VOICE_ID_FR!
+      : process.env.ELEVENLABS_VOICE_ID_EN!
+
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}/stream`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
         method: 'POST',
         headers: {
@@ -24,12 +28,11 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           text: cleaned,
-          model_id: 'eleven_flash_v2_5',
+          model_id: process.env.ELEVENLABS_MODEL_ID ?? 'eleven_multilingual_v2',
+          language_code: lang === 'fr' ? 'fr' : 'en',
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
-            style: 0.3,
-            use_speaker_boost: true,
           },
         }),
       }

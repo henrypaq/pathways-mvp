@@ -321,7 +321,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: ac.signal,
-            body: JSON.stringify({ text: sentence }),
+            body: JSON.stringify({ text: sentence, lang: language }),
           })
           if (!speakRes.ok) {
             console.error('[voice] speak error:', speakRes.status)

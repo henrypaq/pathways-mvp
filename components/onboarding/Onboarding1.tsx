@@ -33,7 +33,7 @@ async function playWelcomeMessage(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal,
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, lang }),
     })
     if (!res.ok) return
     const buffer = await res.arrayBuffer()
