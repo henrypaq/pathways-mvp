@@ -67,7 +67,7 @@ export const enMessages = {
 
   // ── Voice onboarding ──────────────────────────────────────────────────────
   'voice.browserWarning':
-    'Voice mode requires Chrome or Edge. Please switch browsers or choose another mode.',
+    'Voice mode requires Chrome or Edge. Please switch browsers or',
   'voice.hintTap': 'Tap the orb to speak after Pathways finishes each message.',
   'voice.hintContinue': "Tap again when you're ready to continue.",
   'voice.seePathways': 'See my pathways \u2192',

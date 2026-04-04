@@ -68,7 +68,7 @@ export const frMessages: Record<MessageKey, string> = {
 
   // ── Voice onboarding ────────────────────────────���─────────────────────────
   'voice.browserWarning':
-    'Le mode vocal n\u00e9cessite Chrome ou Edge. Veuillez changer de navigateur ou choisir un autre mode.',
+    'Le mode vocal n\u00e9cessite Chrome ou Edge. Veuillez changer de navigateur ou',
   'voice.hintTap': 'Appuyez sur la sph\u00e8re pour parler apr\u00e8s que Pathways a termin\u00e9 son message.',
   'voice.hintContinue': 'Appuyez \u00e0 nouveau lorsque vous \u00eates pr\u00eat\u00b7e \u00e0 continuer.',
   'voice.seePathways': 'Voir mes parcours \u2192',
