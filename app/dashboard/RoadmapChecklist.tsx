@@ -7,9 +7,11 @@ import type { RecommendedRoadmapStep } from '@/lib/types'
 export function RoadmapChecklist({
   steps,
   initialProgress,
+  onProgressChange,
 }: {
   steps: RecommendedRoadmapStep[]
   initialProgress: Record<string, StepStatus>
+  onProgressChange?: (progress: Record<string, StepStatus>) => void
 }) {
   const [progress, setProgress] = useState(initialProgress)
   const [pending, setPending] = useState<string | null>(null)
@@ -22,7 +24,11 @@ export function RoadmapChecklist({
       current === 'not_started' ? 'in_progress' : current === 'in_progress' ? 'done' : 'not_started'
 
     // Optimistic update
-    setProgress((prev) => ({ ...prev, [stepId]: next }))
+    setProgress((prev) => {
+      const updated = { ...prev, [stepId]: next }
+      onProgressChange?.(updated)
+      return updated
+    })
     setError(null)
     setPending(stepId)
 
@@ -30,7 +36,11 @@ export function RoadmapChecklist({
       await updateRoadmapStep(stepId, next)
     } catch {
       // Revert on error
-      setProgress((prev) => ({ ...prev, [stepId]: current }))
+      setProgress((prev) => {
+        const reverted = { ...prev, [stepId]: current }
+        onProgressChange?.(reverted)
+        return reverted
+      })
       setError('Failed to save. Please try again.')
     } finally {
       setPending(null)
