@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmailSignInForm } from "@/components/auth/EmailSignInForm";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { PageSurface } from "@/components/ui/PageSurface";
 
 type Props = {
   searchParams: Promise<{ next?: string }>;
@@ -11,7 +12,7 @@ export default async function LoginPage({ searchParams }: Props) {
   const next = params.next?.startsWith("/") ? params.next : "/onboarding";
 
   return (
-    <div className="min-h-screen flex flex-col bg-white relative overflow-hidden">
+    <PageSurface surface="marketing" className="relative overflow-hidden">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -20,7 +21,7 @@ export default async function LoginPage({ searchParams }: Props) {
         }}
       />
 
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5 md:px-8 border-b border-[#F5F5F5]/80 bg-white/80 backdrop-blur-sm">
+      <nav className="relative z-10 flex items-center justify-between px-6 py-5 md:px-8 border-b border-[var(--ui-border)] bg-[var(--ui-panel)]/85 backdrop-blur-md">
         <Link
           href="/"
           className="text-[15px] font-semibold tracking-tight text-[#171717] hover:text-[#534AB7] transition-colors duration-200"
@@ -87,6 +88,6 @@ export default async function LoginPage({ searchParams }: Props) {
           </p>
         </div>
       </div>
-    </div>
+    </PageSurface>
   );
 }

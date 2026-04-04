@@ -8,6 +8,37 @@
   --primary-light: #EEEDFE;
   --accent: #1D9E75;
   --accent-light: #E1F5EE;
+  /* Default surface (pages that omit PageSurface still look neutral) */
+  --ui-page: #ffffff;
+  --ui-panel: #ffffff;
+  --ui-fg: #171717;
+  --ui-border: #f5f5f5;
+  --ui-border-strong: #e5e5e5;
+}
+
+/* Intentional contrast: same brand colors, different canvas + chrome per mode */
+[data-ui-surface="marketing"] {
+  --ui-page: #ffffff;
+  --ui-panel: #ffffff;
+  --ui-fg: #171717;
+  --ui-border: #f0f0f0;
+  --ui-border-strong: #e8e8e8;
+}
+
+[data-ui-surface="flow"] {
+  --ui-page: #f6f4fb;
+  --ui-panel: #ffffff;
+  --ui-fg: #16141c;
+  --ui-border: #e8e2f2;
+  --ui-border-strong: #dcd4ec;
+}
+
+[data-ui-surface="app"] {
+  --ui-page: #e8e8ec;
+  --ui-panel: #ffffff;
+  --ui-fg: #121218;
+  --ui-border: #d2d2da;
+  --ui-border-strong: #bcbcc8;
 }
 
 @theme inline {

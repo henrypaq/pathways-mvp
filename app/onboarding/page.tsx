@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ModeSelect } from "@/components/onboarding/ModeSelect";
 import { Onboarding1 } from "@/components/onboarding/Onboarding1";
 import { AuthNav } from "@/components/auth/AuthNav";
+import { PageSurface } from "@/components/ui/PageSurface";
 
 // Flow: ModeSelect (step 0) → Onboarding1 (step 1) → /results.
 // Guard redirects stale localStorage step >= 2 to /results.
@@ -89,9 +90,9 @@ export default function OnboardingPage() {
   const showBack = currentStep > 0 && currentStep <= 1;
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col">
-      {/* Minimal top nav */}
-      <div className="flex items-center gap-2 px-4 sm:px-6 py-4 border-b border-[#F5F5F5] flex-shrink-0">
+    <PageSurface surface="flow" fixed>
+      {/* Flow: light frosted bar — feels guided, not “office app” */}
+      <div className="flex items-center gap-2 px-4 sm:px-6 py-4 border-b border-[var(--ui-border)] bg-[var(--ui-panel)]/88 backdrop-blur-md flex-shrink-0">
         <div className="flex flex-1 min-w-0 items-center gap-3">
           {showBack && (
             <motion.button
@@ -121,7 +122,7 @@ export default function OnboardingPage() {
                   ? "w-4 h-1.5 bg-[#534AB7]"
                   : i < currentStep
                   ? "w-1.5 h-1.5 bg-[#534AB7]/40"
-                  : "w-1.5 h-1.5 bg-[#E5E5E5]"
+                  : "w-1.5 h-1.5 bg-[var(--ui-border-strong)]"
               }`}
             />
           ))}
@@ -149,6 +150,6 @@ export default function OnboardingPage() {
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+    </PageSurface>
   );
 }

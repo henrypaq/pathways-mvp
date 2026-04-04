@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { PageSurface } from "@/components/ui/PageSurface";
 
 export default function AuthCodeErrorPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white">
+    <PageSurface
+      surface="marketing"
+      className="items-center justify-center px-6 py-16"
+    >
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold text-[#171717] mb-2">
           Sign-in could not be completed
@@ -26,6 +30,6 @@ export default function AuthCodeErrorPage() {
           </Link>
         </div>
       </div>
-    </div>
+    </PageSurface>
   );
 }

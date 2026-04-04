@@ -5,6 +5,7 @@ import { Calendar, Mail, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AccountBackButton } from "@/components/account/AccountBackButton";
+import { PageSurface } from "@/components/ui/PageSurface";
 import type { PathwaysProfile } from "@/types/voice";
 
 export const metadata = {
@@ -51,8 +52,8 @@ export default async function AccountPage() {
   const continueHref = isComplete ? "/dashboard" : "/onboarding";
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-white">
-      <header className="flex-shrink-0 flex items-center gap-3 border-b border-[#F5F5F5] px-4 py-3 sm:px-6">
+    <PageSurface surface="flow" fixed>
+      <header className="flex-shrink-0 flex items-center gap-3 border-b border-[var(--ui-border)] bg-[var(--ui-panel)]/88 backdrop-blur-md px-4 py-3 sm:px-6">
         <AccountBackButton />
         <h1 className="text-[15px] font-semibold tracking-tight text-[#171717]">
           Account
@@ -82,7 +83,7 @@ export default async function AccountPage() {
             <p className="mt-0.5 text-sm text-[#737373]">{user.email}</p>
           </div>
 
-          <div className="space-y-0 rounded-[14px] border border-[#E5E5E5] bg-white divide-y divide-[#F5F5F5] mb-8">
+          <div className="space-y-0 rounded-[14px] border border-[var(--ui-border-strong)] bg-[var(--ui-panel)] divide-y divide-[var(--ui-border)] mb-8 shadow-sm">
             <div className="flex items-start gap-3 px-4 py-4">
               <Mail
                 size={18}
@@ -127,6 +128,6 @@ export default async function AccountPage() {
           </p>
         </div>
       </main>
-    </div>
+    </PageSurface>
   );
 }

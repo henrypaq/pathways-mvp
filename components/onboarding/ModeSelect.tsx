@@ -64,7 +64,7 @@ export function ModeSelect() {
         </motion.div>
 
         {/* Divider */}
-        <div className="w-full h-px md:w-px md:h-auto bg-[#E5E5E5] flex-shrink-0 md:self-stretch md:my-12" />
+        <div className="w-full h-px md:w-px md:h-auto bg-[var(--ui-border-strong)] flex-shrink-0 md:self-stretch md:my-12" />
 
         {/* Chat side */}
         <motion.div

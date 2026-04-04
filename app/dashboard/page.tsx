@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AuthNav } from '@/components/auth/AuthNav'
 import { StartOverButton } from './StartOverButton'
 import { RoadmapChecklist } from './RoadmapChecklist'
+import { PageSurface } from '@/components/ui/PageSurface'
 import type { PathwaysProfile } from '@/types/voice'
 import type { RecommendationsResult, PathwayMatch } from '@/lib/types'
 import type { StepStatus } from './actions'
@@ -54,9 +55,9 @@ export default async function DashboardPage() {
   const roadmapProgress = profileData.roadmap_progress ?? {}
 
   return (
-    <div className="fixed inset-0 bg-[#FAFAFA] flex flex-col">
-      {/* Nav */}
-      <div className="flex-shrink-0 bg-white border-b border-[#F5F5F5] px-6 py-3 flex items-center justify-between gap-4">
+    <PageSurface surface="app" fixed>
+      {/* App: solid bar, cool gray canvas — tool / workspace */}
+      <div className="flex-shrink-0 bg-[var(--ui-panel)] border-b border-[var(--ui-border)] px-6 py-3 flex items-center justify-between gap-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
         <Link
           href="/"
           className="text-[14px] font-semibold text-[#171717] hover:text-[#534AB7] transition-colors shrink-0"
@@ -73,7 +74,7 @@ export default async function DashboardPage() {
       {/* 3-column body */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-auto lg:overflow-hidden">
         {/* Left sidebar — profile summary */}
-        <aside className="lg:w-60 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#E5E5E5] overflow-y-auto bg-white px-4 py-5">
+        <aside className="lg:w-60 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--ui-border)] overflow-y-auto bg-[var(--ui-panel)] px-4 py-5">
           <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-4">
             Your Profile
           </h2>
@@ -111,7 +112,7 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <div className="mt-6 pt-5 border-t border-[#F5F5F5] space-y-2">
+          <div className="mt-6 pt-5 border-t border-[var(--ui-border)] space-y-2">
             <Link
               href="/results"
               className="block text-[12px] text-[#534AB7] hover:text-[#3C3489] transition-colors"
@@ -223,7 +224,7 @@ export default async function DashboardPage() {
                         href={s.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#E5E5E5] rounded-full text-[11px] text-[#525252] hover:border-[#534AB7]/40 hover:text-[#534AB7] transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--ui-panel)] border border-[var(--ui-border-strong)] rounded-full text-[11px] text-[#525252] hover:border-[#534AB7]/40 hover:text-[#534AB7] transition-colors"
                       >
                         <ExternalLink size={9} />
                         {s.title}
@@ -244,7 +245,7 @@ export default async function DashboardPage() {
         </main>
 
         {/* Right aside — roadmap checklist */}
-        <aside className="lg:w-72 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#E5E5E5] overflow-y-auto bg-white px-4 py-5">
+        <aside className="lg:w-72 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--ui-border)] overflow-y-auto bg-[var(--ui-panel)] px-4 py-5">
           <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-1">
             Your Roadmap
           </h2>
@@ -252,7 +253,7 @@ export default async function DashboardPage() {
           <RoadmapChecklist steps={result.roadmap ?? []} initialProgress={roadmapProgress} />
         </aside>
       </div>
-    </div>
+    </PageSurface>
   )
 }
 
@@ -282,7 +283,7 @@ function ProfileField({
 
 function MetaBadge({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-[#E5E5E5] rounded-[8px] px-3 py-2">
+    <div className="bg-[var(--ui-panel)] border border-[var(--ui-border-strong)] rounded-[8px] px-3 py-2 shadow-sm">
       <p className="text-[10px] text-[#A3A3A3] uppercase tracking-wider">{label}</p>
       <p className="text-[12px] font-semibold text-[#171717]">{value}</p>
     </div>

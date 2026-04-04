@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, Shield, BookOpen, FileSearch, ChevronRight } from "lucide-react";
 import { AuthNav } from "@/components/auth/AuthNav";
+import { PageSurface } from "@/components/ui/PageSurface";
 import { createClient } from "@/lib/supabase/client";
 
 const fadeUp = {
@@ -70,11 +71,13 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Nav */}
+    <PageSurface surface="marketing">
+      {/* Nav — airy, minimal until scroll; then frosted bar */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 transition-all duration-300 ${
-          scrolled ? "bg-white/90 backdrop-blur-sm shadow-sm" : ""
+          scrolled
+            ? "bg-[var(--ui-panel)]/88 backdrop-blur-md shadow-[0_1px_0_var(--ui-border)]"
+            : ""
         }`}
       >
         <Link
@@ -211,6 +214,6 @@ export default function LandingPage() {
           </motion.button>
         </motion.div>
       </section>
-    </div>
+    </PageSurface>
   );
 }

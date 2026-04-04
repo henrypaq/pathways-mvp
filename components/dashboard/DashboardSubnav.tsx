@@ -4,7 +4,7 @@ type ActivePage = 'profile' | 'documents'
 
 export function DashboardSubnav({ active }: { active: ActivePage }) {
   return (
-    <aside className="lg:w-60 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#E5E5E5] bg-white px-4 py-5">
+    <aside className="lg:w-60 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--ui-border)] bg-[var(--ui-panel)] px-4 py-5">
       <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-4">
         Dashboard
       </h2>

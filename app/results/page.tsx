@@ -10,6 +10,7 @@ import type { RecommendationsResult } from '@/lib/types'
 import { PathwayMatchCard } from '@/components/results/PathwayMatchCard'
 import { PersonalizedRoadmap } from '@/components/results/PersonalizedRoadmap'
 import { AuthNav } from '@/components/auth/AuthNav'
+import { PageSurface } from '@/components/ui/PageSurface'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 import { createClient } from '@/lib/supabase/client'
 
@@ -76,7 +77,7 @@ function LoadingState() {
           <motion.div
             key={i}
             className={`rounded-full transition-all duration-500 ${
-              i <= stepIndex ? 'w-6 h-1.5 bg-[#534AB7]' : 'w-1.5 h-1.5 bg-[#E5E5E5]'
+              i <= stepIndex ? 'w-6 h-1.5 bg-[#534AB7]' : 'w-1.5 h-1.5 bg-[var(--ui-border-strong)]'
             }`}
           />
         ))}
@@ -229,9 +230,8 @@ export default function ResultsPage() {
   const roadmapSteps = result?.roadmap ?? []
 
   return (
-    <div className="fixed inset-0 bg-[#FAFAFA] flex flex-col">
-      {/* Top nav */}
-      <div className="flex-shrink-0 bg-white border-b border-[#F5F5F5] px-6 py-3 flex items-center justify-between">
+    <PageSurface surface="flow" fixed>
+      <div className="flex-shrink-0 border-b border-[var(--ui-border)] bg-[var(--ui-panel)]/88 backdrop-blur-md px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/onboarding')}
@@ -355,7 +355,7 @@ export default function ResultsPage() {
               </div>
 
               {/* Right panel — roadmap */}
-              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#E5E5E5] overflow-y-auto bg-white px-4 py-6">
+              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--ui-border)] overflow-y-auto bg-[var(--ui-panel)]/95 backdrop-blur-sm px-4 py-6">
                 {selectedPathway && roadmapSteps.length > 0 ? (
                   <motion.div
                     key={selectedPathwayId}
@@ -400,6 +400,6 @@ export default function ResultsPage() {
           ) : null}
         </AnimatePresence>
       </div>
-    </div>
+    </PageSurface>
   )
 }
