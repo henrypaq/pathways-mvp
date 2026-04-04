@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  CheckCircle2, Clock, DollarSign, ExternalLink, ChevronRight, ChevronDown,
-  Sparkles, ShieldCheck, AlertCircle, FileText, ArrowLeft,
+  CheckCircle2, Clock, DollarSign, ExternalLink,
+  ChevronRight, ShieldCheck, AlertCircle, ArrowLeft,
 } from 'lucide-react'
 import type { PathwayMatch, RecommendedRoadmapStep } from '@/lib/types'
-import { DocumentsManager } from './documents/DocumentsManager'
-import { RoadmapChecklist } from './RoadmapChecklist'
+import { DocumentsStep } from './DocumentsStep'
+import { RoadmapStepPage } from './RoadmapStepPage'
 import type { StepStatus } from './actions'
 
 interface DocumentRow {
@@ -30,13 +30,35 @@ interface Props {
   initialDocuments: DocumentRow[]
 }
 
-// Documents + Requirements merged into one step
-const STEPS = [
-  { id: 'pathway' as const,   num: 1, label: 'Pathway Overview' },
-  { id: 'documents' as const, num: 2, label: 'Documents & Requirements' },
-  { id: 'roadmap' as const,   num: 3, label: 'Action Plan' },
-]
-type StepId = typeof STEPS[number]['id']
+const BASE_STEP_DEFS = [
+  { id: 'pathway' as const, label: 'Pathway Overview' },
+  { id: 'documents' as const, label: 'Documents' },
+  { id: 'requirements' as const, label: 'Requirements' },
+] as const
+type BaseStepId = (typeof BASE_STEP_DEFS)[number]['id']
+
+export type WorkspaceLocation =
+  | { kind: 'base'; id: BaseStepId }
+  | { kind: 'roadmap'; stepId: string }
+
+function locationKey(loc: WorkspaceLocation): string {
+  return loc.kind === 'base' ? `base:${loc.id}` : `roadmap:${loc.stepId}`
+}
+
+function parseCheckpointKey(key: string): WorkspaceLocation {
+  if (key.startsWith('roadmap:')) {
+    return { kind: 'roadmap', stepId: key.slice('roadmap:'.length) }
+  }
+  const id = key.replace('base:', '') as BaseStepId
+  return { kind: 'base', id }
+}
+
+function titleForLocation(loc: WorkspaceLocation, roadmapSteps: RecommendedRoadmapStep[]): string {
+  if (loc.kind === 'base') {
+    return BASE_STEP_DEFS.find((b) => b.id === loc.id)!.label
+  }
+  return roadmapSteps.find((s) => s.id === loc.stepId)?.title ?? 'Step'
+}
 
 // Keyword map: requirement text → best document type to upload
 const REQ_TO_DOC: Array<{ keywords: string[]; docType: string; docLabel: string }> = [
@@ -54,7 +76,7 @@ function getSuggestedDoc(req: string): { docType: string; docLabel: string } | n
   return REQ_TO_DOC.find((m) => m.keywords.some((kw) => lower.includes(kw))) ?? null
 }
 
-// ── Pathway overview step ─────────────────────────────────────────────────────
+// ── Pathway overview step ──────────────────────────────────────────────────────
 
 function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
   return (
@@ -168,145 +190,92 @@ function PathwayStep({ pathway }: { pathway: PathwayMatch }) {
   )
 }
 
-// ── Combined Documents & Requirements step ───────────────────────────────────
+// ── Requirements step ──────────────────────────────────────────────────────────
 
-function DocumentsRequirementsStep({
+function RequirementsStep({
   pathway,
-  initialDocuments,
   uploadedDocTypes,
-  caseId,
-  userId,
-  onCountChange,
-  onTypesChange,
 }: {
   pathway: PathwayMatch
-  initialDocuments: DocumentRow[]
   uploadedDocTypes: Set<string>
-  caseId: string | null
-  userId: string
-  onCountChange: (n: number) => void
-  onTypesChange: (types: Set<string>) => void
 }) {
-  const [expandedReq, setExpandedReq] = useState<number | null>(null)
+  const metCount = pathway.requirements.filter((req) => {
+    const s = getSuggestedDoc(req)
+    return s ? uploadedDocTypes.has(s.docType) : false
+  }).length
 
   return (
-    <div className="space-y-6">
-      {/* AI-suggested documents per requirement */}
-      <div className="bg-white rounded-2xl border border-[#EBEBEB] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles size={13} className="text-[#534AB7]" />
-          <h3 className="text-[13px] font-semibold text-[#171717]">Required Documents</h3>
-        </div>
-        <p className="text-[12px] text-[#737373] mb-4">
-          Based on your pathway requirements, here&apos;s what you need to upload. AI will verify each one automatically.
-        </p>
+    <div className="space-y-4">
+      <p className="text-[13px] text-[#737373] leading-relaxed">
+        Official eligibility requirements for {pathway.name}. Upload supporting documents in the Documents step to mark each one as met.
+      </p>
 
-        <div className="space-y-2">
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="px-5 py-4 border-b border-[#F5F5F5] flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-[#171717]">Requirements</p>
+          <span className="text-[12px] text-[#A3A3A3]">{metCount} of {pathway.requirements.length} met</span>
+        </div>
+        <div className="divide-y divide-[#F9F9F9]">
           {pathway.requirements.map((req, i) => {
             const suggestion = getSuggestedDoc(req)
-            const isUploaded = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
-
+            const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
             return (
-              <div key={i} className="rounded-xl border border-[#EBEBEB] overflow-hidden">
-                <button
-                  onClick={() => setExpandedReq(expandedReq === i ? null : i)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAFA] transition-colors"
-                >
-                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                    isUploaded ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
-                  }`}>
-                    {isUploaded && (
-                      <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
-                        <path d="M1 2.5l1.5 1.5 3.5-3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {!isUploaded && <div className="w-1.5 h-1.5 rounded-full bg-[#D4D4D4]" />}
-                  </div>
-                  <span className="flex-1 text-[13px] text-[#171717] leading-snug">{req}</span>
-                  {suggestion && (
-                    <span className={`text-[11px] font-medium flex-shrink-0 px-2 py-0.5 rounded-full ${
-                      isUploaded ? 'text-[#1D9E75] bg-[#DCFCE7]' : 'text-[#737373] bg-[#F5F5F5]'
-                    }`}>
-                      {isUploaded ? '✓ Uploaded' : suggestion.docLabel}
-                    </span>
+              <div key={i} className="px-5 py-4 flex items-start gap-3">
+                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                  isMet ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
+                }`}>
+                  {isMet && (
+                    <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
+                      <path d="M1 2.5l1.5 1.5 3.5-3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   )}
-                  <ChevronDown size={13} className={`text-[#A3A3A3] flex-shrink-0 transition-transform ${expandedReq === i ? 'rotate-180' : ''}`} />
-                </button>
-                {expandedReq === i && (
-                  <div className="px-4 pb-3 border-t border-[#F5F5F5] bg-[#FAFAFA]">
-                    <div className="flex items-start gap-2 pt-2.5">
-                      <FileText size={12} className="text-[#A3A3A3] mt-0.5 flex-shrink-0" />
-                      <p className="text-[12px] text-[#737373] leading-relaxed">
-                        {suggestion
-                          ? isUploaded
-                            ? `Your ${suggestion.docLabel} has been uploaded and will be analyzed for this requirement.`
-                            : `Upload your ${suggestion.docLabel} using the uploader below. Select "${suggestion.docLabel}" as the document type.`
-                          : 'Upload a relevant document using the uploader below. AI will extract and verify the details automatically.'}
-                      </p>
-                    </div>
-                  </div>
+                </div>
+                <span className={`flex-1 text-[13px] leading-snug ${isMet ? 'text-[#171717]' : 'text-[#525252]'}`}>
+                  {req}
+                </span>
+                {suggestion && !isMet && (
+                  <span className="flex-shrink-0 text-[11px] text-[#A3A3A3] bg-[#F5F5F5] px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {suggestion.docLabel}
+                  </span>
                 )}
               </div>
             )
           })}
+          {pathway.requirements.length === 0 && (
+            <div className="px-5 py-8 text-center text-[13px] text-[#A3A3A3]">
+              No specific requirements listed for this pathway.
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Document upload manager */}
-      <div>
-        <h3 className="text-[13px] font-semibold text-[#171717] mb-1">Upload Documents</h3>
-        <p className="text-[12px] text-[#737373] mb-4">
-          Select a document type and upload the file. AI will analyze each document and match it to the requirements above.
-        </p>
-        {caseId ? (
-          <DocumentsManager
-            initialDocuments={initialDocuments}
-            caseId={caseId}
-            userId={userId}
-            onCountChange={onCountChange}
-            onTypesChange={onTypesChange}
-          />
-        ) : (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-[13px] text-red-700">
-            Unable to load document manager — your session may have expired. Please refresh the page.
-          </div>
-        )}
       </div>
     </div>
   )
 }
 
-// ── Floating checklist panel (ProfilePanel style + score) ─────────────────────
+// ── Floating checklist panel ───────────────────────────────────────────────────
 
-interface FloatingChecklistProps {
-  steps: typeof STEPS
-  activeStep: StepId
-  completedSteps: Set<StepId>
-  score: number
-  docCount: number
-  roadmapSteps: RecommendedRoadmapStep[]
-  roadmapProgress: Record<string, StepStatus>
-  onNavigate: (step: StepId) => void
+type SidebarEntry = {
+  key: string
+  label: string
+  sub?: string
+  complete: boolean
+  current: boolean
 }
 
-function FloatingChecklist({
-  steps, activeStep, completedSteps, score, docCount, roadmapSteps, roadmapProgress, onNavigate,
-}: FloatingChecklistProps) {
-  const stepsDone = roadmapSteps.filter((s) => roadmapProgress[s.id] === 'done').length
-  const scoreColor = score >= 70 ? '#1D9E75' : score >= 40 ? '#F59E0B' : '#534AB7'
+interface FloatingChecklistProps {
+  entries: SidebarEntry[]
+  score: number
+  onNavigate: (key: string) => void
+}
 
-  const subLabel: Record<StepId, string | undefined> = {
-    pathway: undefined,
-    documents: `${docCount} / 7 uploaded`,
-    roadmap: roadmapSteps.length > 0 ? `${stepsDone} / ${roadmapSteps.length} done` : undefined,
-  }
+function FloatingChecklist({ entries, score, onNavigate }: FloatingChecklistProps) {
+  const scoreColor = score >= 70 ? '#1D9E75' : score >= 40 ? '#F59E0B' : '#534AB7'
 
   return (
     <div
-      className="flex flex-col overflow-hidden"
-      style={{ width: '248px', background: '#ffffff', borderRadius: '16px', padding: '20px', flexShrink: 0, border: '1px solid #E5E5E5', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
+      className="flex flex-col overflow-hidden max-h-[calc(100vh-6rem)]"
+      style={{ width: '268px', background: '#ffffff', borderRadius: '16px', padding: '20px', flexShrink: 0, border: '1px solid #E5E5E5', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
     >
-      {/* Application score */}
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
         Application Score
       </p>
@@ -335,63 +304,55 @@ function FloatingChecklist({
         </div>
       </div>
 
-      {/* Divider */}
       <div style={{ height: '1px', background: '#F0F0F0', marginBottom: '16px' }} />
 
-      {/* Steps */}
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
         Steps
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {steps.map((step) => {
-          const isComplete = completedSteps.has(step.id)
-          const isCurrent = activeStep === step.id
-          const sub = subLabel[step.id]
-
-          return (
-            <button
-              key={step.id}
-              onClick={() => onNavigate(step.id)}
-              className={`w-full text-left rounded-[10px] px-3 py-2.5 transition-colors duration-150 ${
-                isCurrent ? 'bg-[#EEEDFE]' : 'hover:bg-[#F5F5F5] active:bg-[#EBEBEB]'
-              }`}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                {/* Status dot */}
-                <div
-                  style={{
-                    width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, marginTop: '5px',
-                    background: isComplete ? '#1D9E75' : isCurrent ? '#534AB7' : '#E5E7EB',
-                    transition: 'background 0.3s ease',
-                  }}
-                />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{
-                    fontSize: '12px', fontWeight: isCurrent ? 600 : 500,
-                    color: isComplete ? '#A3A3A3' : isCurrent ? '#534AB7' : '#525252',
-                    transition: 'color 0.2s',
-                  }}>
-                    {step.label}
-                  </div>
-                  {sub && (
-                    <div style={{ fontSize: '10px', color: '#A3A3A3', marginTop: '1px' }}>{sub}</div>
-                  )}
+      <div className="flex flex-col gap-0.5 overflow-y-auto min-h-0 pr-0.5 -mr-0.5">
+        {entries.map((e) => (
+          <button
+            key={e.key}
+            type="button"
+            onClick={() => onNavigate(e.key)}
+            className={`w-full text-left rounded-[10px] px-3 py-2.5 transition-colors duration-150 ${
+              e.current ? 'bg-[#EEEDFE]' : 'hover:bg-[#F5F5F5] active:bg-[#EBEBEB]'
+            }`}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <div
+                style={{
+                  width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, marginTop: '5px',
+                  background: e.complete ? '#1D9E75' : e.current ? '#534AB7' : '#E5E7EB',
+                  transition: 'background 0.3s ease',
+                }}
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  fontSize: '12px', fontWeight: e.current ? 600 : 500,
+                  color: e.complete ? '#A3A3A3' : e.current ? '#534AB7' : '#525252',
+                  transition: 'color 0.2s',
+                }}>
+                  {e.label}
                 </div>
-                <AnimatePresence>
-                  {isComplete && (
-                    <motion.span
-                      initial={{ opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.6 }}
-                      transition={{ duration: 0.25 }}
-                      style={{ fontSize: '11px', color: '#1D9E75', flexShrink: 0, marginTop: '3px' }}
-                    >✓</motion.span>
-                  )}
-                </AnimatePresence>
+                {e.sub && (
+                  <div style={{ fontSize: '10px', color: '#A3A3A3', marginTop: '1px' }}>{e.sub}</div>
+                )}
               </div>
-            </button>
-          )
-        })}
+              <AnimatePresence>
+                {e.complete && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    transition={{ duration: 0.25 }}
+                    style={{ fontSize: '11px', color: '#1D9E75', flexShrink: 0, marginTop: '3px' }}
+                  >✓</motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -402,37 +363,106 @@ function FloatingChecklist({
 export function ApplicationWorkspace({
   pathway, roadmapSteps, roadmapProgress: initialProgress, caseId, userId, initialDocuments,
 }: Props) {
-  const [activeStep, setActiveStep] = useState<StepId>('pathway')
-  const [completedSteps, setCompletedSteps] = useState<Set<StepId>>(new Set())
+  const [location, setLocation] = useState<WorkspaceLocation>({ kind: 'base', id: 'pathway' })
+  const [completedSteps, setCompletedSteps] = useState<Set<BaseStepId>>(new Set())
   const [roadmapProgress, setRoadmapProgress] = useState(initialProgress)
   const [docCount, setDocCount] = useState(initialDocuments.length)
   const [uploadedDocTypes, setUploadedDocTypes] = useState<Set<string>>(
     new Set(initialDocuments.map((d) => d.type).filter(Boolean) as string[])
   )
 
-  const activeIndex = STEPS.findIndex((s) => s.id === activeStep)
-  const isLastStep = activeIndex === STEPS.length - 1
-  const progressPct = (completedSteps.size / STEPS.length) * 100
+  useEffect(() => {
+    setRoadmapProgress(initialProgress)
+  }, [initialProgress])
 
-  // Live application score: docs + roadmap (independent of step completion)
+  const flatLocations = useMemo((): WorkspaceLocation[] => {
+    const tail = roadmapSteps.map((s) => ({ kind: 'roadmap' as const, stepId: s.id }))
+    return [
+      { kind: 'base', id: 'pathway' },
+      { kind: 'base', id: 'documents' },
+      { kind: 'base', id: 'requirements' },
+      ...tail,
+    ]
+  }, [roadmapSteps])
+
+  const activeKey = locationKey(location)
+  const activeIndex = flatLocations.findIndex((l) => locationKey(l) === activeKey)
+  const isLastStep = activeIndex >= 0 && activeIndex === flatLocations.length - 1
+
+  const baseDoneCount = BASE_STEP_DEFS.filter((b) => completedSteps.has(b.id)).length
+  const roadmapDoneCount = roadmapSteps.filter((s) => roadmapProgress[s.id] === 'done').length
+  const totalFlat = flatLocations.length
+  const doneFlat = baseDoneCount + roadmapDoneCount
+  const progressPct = totalFlat > 0 ? (doneFlat / totalFlat) * 100 : 0
+
   const stepsDone = roadmapSteps.filter((s) => roadmapProgress[s.id] === 'done').length
   const score = Math.round(
     Math.min(docCount / 7, 1) * 50 +
     (roadmapSteps.length > 0 ? (stepsDone / roadmapSteps.length) * 50 : 0)
   )
 
+  const isCurrentComplete =
+    location.kind === 'base'
+      ? completedSteps.has(location.id)
+      : roadmapProgress[location.stepId] === 'done'
+
+  const sidebarEntries = useMemo((): SidebarEntry[] => {
+    const entries: SidebarEntry[] = []
+    for (const s of BASE_STEP_DEFS) {
+      const key = `base:${s.id}`
+      entries.push({
+        key,
+        label: s.label,
+        sub: s.id === 'documents' ? `${docCount} / 7 uploaded` : undefined,
+        complete: completedSteps.has(s.id),
+        current: activeKey === key,
+      })
+    }
+    for (const step of roadmapSteps) {
+      const key = `roadmap:${step.id}`
+      const done = roadmapProgress[step.id] === 'done'
+      entries.push({
+        key,
+        label: step.title,
+        sub: done ? 'Done' : step.estimatedTime,
+        complete: done,
+        current: activeKey === key,
+      })
+    }
+    return entries
+  }, [activeKey, completedSteps, docCount, roadmapProgress, roadmapSteps])
+
   const handleNext = useCallback(() => {
-    setCompletedSteps((prev) => new Set(prev).add(activeStep))
-    if (!isLastStep) setActiveStep(STEPS[activeIndex + 1].id)
-  }, [activeStep, activeIndex, isLastStep])
+    const idx = flatLocations.findIndex((l) => locationKey(l) === activeKey)
+    if (idx < 0) return
+    if (location.kind === 'base') {
+      setCompletedSteps((prev) => new Set(prev).add(location.id))
+      if (idx < flatLocations.length - 1) {
+        setLocation(flatLocations[idx + 1])
+      }
+    } else if (idx < flatLocations.length - 1) {
+      setLocation(flatLocations[idx + 1])
+    }
+  }, [activeKey, flatLocations, location])
 
   const handleBack = useCallback(() => {
-    if (activeIndex > 0) setActiveStep(STEPS[activeIndex - 1].id)
-  }, [activeIndex])
+    if (activeIndex > 0) setLocation(flatLocations[activeIndex - 1])
+  }, [activeIndex, flatLocations])
 
-  const handleNavigate = useCallback((step: StepId) => {
-    setActiveStep(step)
+  const handleNavigate = useCallback((key: string) => {
+    setLocation(parseCheckpointKey(key))
   }, [])
+
+  const handleRoadmapSaved = useCallback((stepId: string, status: StepStatus) => {
+    setRoadmapProgress((prev) => ({ ...prev, [stepId]: status }))
+  }, [])
+
+  const currentRoadmapStep =
+    location.kind === 'roadmap'
+      ? roadmapSteps.find((s) => s.id === location.stepId)
+      : undefined
+
+  const motionKey = activeKey
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -448,7 +478,7 @@ export function ApplicationWorkspace({
             />
           </div>
           <motion.span
-            key={completedSteps.size}
+            key={doneFlat}
             className="text-[12px] font-bold text-[#534AB7] flex-shrink-0 tabular-nums w-9 text-right"
             initial={{ opacity: 0.5, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -463,55 +493,61 @@ export function ApplicationWorkspace({
       <div className="relative flex-1 flex overflow-hidden">
         {/* Scrollable step content */}
         <div className="flex-1 overflow-y-auto bg-[#FAFAFA] min-w-0">
-          <div className="max-w-4xl mx-auto px-8 py-8">
+          <div className="max-w-3xl mx-auto px-8 py-8">
             {/* Step header */}
             <div className="flex items-center gap-3 mb-7">
               <span className="w-7 h-7 rounded-full bg-[#534AB7] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">
-                {STEPS[activeIndex].num}
+                {activeIndex >= 0 ? activeIndex + 1 : 1}
               </span>
-              <h2 className="text-[18px] font-bold text-[#171717]">{STEPS[activeIndex].label}</h2>
+              <h2 className="text-[18px] font-bold text-[#171717]">{titleForLocation(location, roadmapSteps)}</h2>
             </div>
 
             {/* Step content */}
             <AnimatePresence mode="wait">
               <motion.div
-                key={activeStep}
+                key={motionKey}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                {activeStep === 'pathway' && <PathwayStep pathway={pathway} />}
+                {location.kind === 'base' && location.id === 'pathway' && <PathwayStep pathway={pathway} />}
 
-                {activeStep === 'documents' && (
-                  <DocumentsRequirementsStep
+                {location.kind === 'base' && location.id === 'documents' && (
+                  caseId ? (
+                    <DocumentsStep
+                      initialDocuments={initialDocuments}
+                      caseId={caseId}
+                      userId={userId}
+                      onCountChange={setDocCount}
+                      onTypesChange={setUploadedDocTypes}
+                    />
+                  ) : (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-[13px] text-red-700">
+                      Unable to load document manager — your session may have expired. Please refresh the page.
+                    </div>
+                  )
+                )}
+
+                {location.kind === 'base' && location.id === 'requirements' && (
+                  <RequirementsStep
                     pathway={pathway}
-                    initialDocuments={initialDocuments}
                     uploadedDocTypes={uploadedDocTypes}
-                    caseId={caseId}
-                    userId={userId}
-                    onCountChange={setDocCount}
-                    onTypesChange={setUploadedDocTypes}
                   />
                 )}
 
-                {activeStep === 'roadmap' && (
-                  <div>
-                    <p className="text-[13px] text-[#737373] mb-5">
-                      Concrete steps for {pathway.name}. Click each step to track your progress.
-                    </p>
-                    {roadmapSteps.length > 0 ? (
-                      <RoadmapChecklist
-                        steps={roadmapSteps}
-                        initialProgress={roadmapProgress}
-                        onProgressChange={setRoadmapProgress}
-                      />
-                    ) : (
-                      <p className="text-center py-10 text-[13px] text-[#A3A3A3]">
-                        No roadmap steps available. Try refreshing your pathway analysis.
-                      </p>
-                    )}
-                  </div>
+                {location.kind === 'roadmap' && currentRoadmapStep && (
+                  <RoadmapStepPage
+                    step={currentRoadmapStep}
+                    initialStatus={roadmapProgress[currentRoadmapStep.id] ?? 'not_started'}
+                    onSaved={handleRoadmapSaved}
+                  />
+                )}
+
+                {location.kind === 'roadmap' && !currentRoadmapStep && (
+                  <p className="text-center py-10 text-[13px] text-[#A3A3A3]">
+                    This step is no longer on your roadmap. Choose another item in the checklist.
+                  </p>
                 )}
               </motion.div>
             </AnimatePresence>
@@ -531,18 +567,24 @@ export function ApplicationWorkspace({
               </button>
 
               <button
+                type="button"
                 onClick={handleNext}
+                disabled={isLastStep && location.kind === 'roadmap'}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-semibold transition-colors active:scale-95 ${
-                  completedSteps.has(activeStep) && isLastStep
+                  location.kind === 'base' && isCurrentComplete && isLastStep
                     ? 'bg-[#1D9E75] text-white hover:bg-[#178C66]'
-                    : completedSteps.has(activeStep)
+                    : location.kind === 'base' && isCurrentComplete
                     ? 'bg-[#F5F5F5] text-[#A3A3A3] hover:bg-[#EBEBEB]'
+                    : isLastStep && location.kind === 'roadmap'
+                    ? 'bg-[#F5F5F5] text-[#D4D4D4] cursor-default'
                     : 'bg-[#534AB7] text-white hover:bg-[#3C3489]'
                 }`}
               >
                 {isLastStep
-                  ? completedSteps.has(activeStep) ? '✓ Completed' : 'Mark Complete'
-                  : completedSteps.has(activeStep)
+                  ? location.kind === 'base'
+                    ? isCurrentComplete ? '✓ Completed' : 'Mark Complete'
+                    : 'End of plan'
+                  : location.kind === 'base' && isCurrentComplete
                   ? <><ChevronRight size={14} /> Continue</>
                   : <>Next Step <ChevronRight size={14} /></>
                 }
@@ -556,13 +598,8 @@ export function ApplicationWorkspace({
         {/* Floating checklist panel */}
         <div className="hidden lg:flex flex-shrink-0 items-start pt-6 pr-6 pl-2">
           <FloatingChecklist
-            steps={STEPS}
-            activeStep={activeStep}
-            completedSteps={completedSteps}
+            entries={sidebarEntries}
             score={score}
-            docCount={docCount}
-            roadmapSteps={roadmapSteps}
-            roadmapProgress={roadmapProgress}
             onNavigate={handleNavigate}
           />
         </div>

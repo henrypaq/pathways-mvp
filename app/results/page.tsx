@@ -291,7 +291,7 @@ export default function ResultsPage() {
               transition={{ duration: 0.4 }}
             >
               {/* Left panel — pathway cards */}
-              <div className="flex-1 overflow-y-auto px-6 py-6 min-w-0">
+              <div className="flex-1 overflow-y-auto px-6 py-6 min-w-0 bg-[var(--ui-page)]">
                 {/* Profile summary */}
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
@@ -355,7 +355,7 @@ export default function ResultsPage() {
               </div>
 
               {/* Right panel — roadmap */}
-              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--ui-border)] overflow-y-auto bg-[var(--ui-panel)]/95 backdrop-blur-sm px-4 py-6">
+              <div className="w-full lg:w-80 lg:flex-shrink-0 border-t lg:border-t-0 border-[var(--ui-border)] overflow-y-auto bg-white px-4 py-6 lg:shadow-[-1px_0_0_0_var(--ui-border)]">
                 {selectedPathway && roadmapSteps.length > 0 ? (
                   <motion.div
                     key={selectedPathwayId}
