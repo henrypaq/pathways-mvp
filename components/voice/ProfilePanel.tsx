@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { PathwaysProfile } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS, PROFILE_FIELD_LABELS } from '@/types/voice'
 import { getCountryLabel } from '@/lib/countries'
+import { useLanguage } from '@/context/LanguageContext'
 
 const COUNTRY_FIELDS = new Set<keyof PathwaysProfile>(['current_country', 'nationality', 'destination_country'])
 
@@ -23,6 +24,7 @@ interface ProfilePanelProps {
 }
 
 export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
+  const { language, setLanguage, isLanguageLocked } = useLanguage()
   const filledRequired = REQUIRED_PROFILE_FIELDS.filter((f) => profile[f] !== undefined && profile[f] !== '')
   const progressPct = (filledRequired.length / REQUIRED_PROFILE_FIELDS.length) * 100
 
@@ -122,6 +124,35 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Language selector */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="mt-6 pt-6 border-t border-neutral-100 flex flex-col items-center gap-2"
+      >
+        <p className="text-xs text-neutral-400 text-center">
+          {isLanguageLocked
+            ? language === 'fr' ? 'Langue' : 'Language'
+            : 'Choose your language · Choisissez votre langue'}
+        </p>
+        <div className="inline-flex bg-neutral-100 rounded-full p-1 gap-1">
+          {(['en', 'fr'] as const).map((lang) => (
+            <button
+              key={lang}
+              onClick={() => setLanguage(lang)}
+              className={
+                language === lang
+                  ? 'bg-neutral-900 text-white rounded-full px-4 py-1.5 text-sm font-medium transition-colors'
+                  : 'text-neutral-400 px-4 py-1.5 text-sm hover:text-neutral-700 transition-colors cursor-pointer'
+              }
+            >
+              {lang === 'en' ? 'English' : 'Français'}
+            </button>
+          ))}
+        </div>
+      </motion.div>
     </div>
   )
 }
