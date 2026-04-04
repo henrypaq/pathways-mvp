@@ -8,6 +8,9 @@ import { LanguageSelector } from '@/components/voice/LanguageSelector'
 
 const COUNTRY_FIELDS = new Set<keyof PathwaysProfile>(['current_country', 'nationality', 'destination_country'])
 
+/** Optional fields still stored on the profile but not shown in the live panel (too noisy or non-scalar). */
+const PROFILE_PANEL_HIDDEN_OPTIONAL = new Set<keyof PathwaysProfile>(['language_test'])
+
 function displayValue(field: keyof PathwaysProfile, value: string): string {
   if (COUNTRY_FIELDS.has(field) && /^[A-Z]{2}$/.test(value)) {
     return getCountryLabel(value)
@@ -25,14 +28,14 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
   const progressPct = (filledRequired.length / REQUIRED_PROFILE_FIELDS.length) * 100
 
   const optionalKeys = (Object.keys(PROFILE_FIELD_LABELS) as (keyof PathwaysProfile)[]).filter(
-    (k) => !REQUIRED_PROFILE_FIELDS.includes(k)
+    (k) => !REQUIRED_PROFILE_FIELDS.includes(k) && !PROFILE_PANEL_HIDDEN_OPTIONAL.has(k),
   )
   const filledOptional = optionalKeys.filter((k) => profile[k] !== undefined && profile[k] !== '')
 
   return (
     <div
-      className="flex flex-col overflow-hidden border border-gray-200 shadow-sm"
-      style={{ width: '280px', background: '#ffffff', borderRadius: '16px', padding: '20px', flexShrink: 0 }}
+      className="flex w-full max-w-[328px] min-w-[280px] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+      style={{ padding: '20px' }}
     >
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>

@@ -111,7 +111,7 @@ export function PersonalizedRoadmap({ steps, pathwayName }: PersonalizedRoadmapP
   const progressPct = steps.length > 0 ? Math.round((completedCount / steps.length) * 100) : 0
 
   return (
-    <div className="bg-white border border-[#E5E5E5] rounded-[16px] overflow-hidden">
+    <div className="rounded-2xl border border-[#E5E5E5] bg-white overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
       {/* Header */}
       <div className="px-5 py-4 border-b border-[#F5F5F5]">
         <div className="flex items-center justify-between mb-1">
@@ -122,7 +122,7 @@ export function PersonalizedRoadmap({ steps, pathwayName }: PersonalizedRoadmapP
 
         {/* Progress bar */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-1.5 bg-[#F5F5F5] rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-[#534AB7] rounded-full"
               initial={{ width: 0 }}

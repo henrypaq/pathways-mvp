@@ -242,8 +242,19 @@ export function ChatOnboarding() {
         </div>
       </div>
 
-      {/* Profile panel — desktop only */}
-      <div className="hidden md:block" style={{ flexShrink: 0 }}>
+      {/* Profile panel — desktop only; rail centers a wider card */}
+      <div
+        className="hidden md:flex"
+        style={{
+          width: 'min(400px, 36vw)',
+          minWidth: '300px',
+          flexShrink: 0,
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          paddingLeft: 12,
+          paddingRight: 20,
+        }}
+      >
         <ProfilePanel profile={profile} isComplete={isComplete} />
       </div>
     </div>

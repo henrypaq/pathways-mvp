@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, Loader2, AlertCircle, Sparkles, X } from 'lucide-react'
 
@@ -26,6 +26,8 @@ interface Props {
   initialDocuments: Document[]
   caseId: string
   userId: string
+  onCountChange?: (count: number) => void
+  onTypesChange?: (types: Set<string>) => void
 }
 
 const REQUIRED_DOCS = [
@@ -91,7 +93,7 @@ function summarizeExtracted(docType: string, extracted: Record<string, unknown>)
   }
 }
 
-export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
+export function DocumentsManager({ initialDocuments, caseId, userId, onCountChange, onTypesChange }: Props) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments)
   const [selectedType, setSelectedType] = useState('')
   const [dragOver, setDragOver] = useState(false)
@@ -104,6 +106,11 @@ export function DocumentsManager({ initialDocuments, caseId, userId }: Props) {
   const [profileApplied, setProfileApplied] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    onCountChange?.(documents.length)
+    onTypesChange?.(new Set(documents.map((d) => d.type).filter(Boolean) as string[]))
+  }, [documents.length, onCountChange, onTypesChange, documents])
 
   const uploadedTypes = new Set(documents.map((d) => d.type))
 

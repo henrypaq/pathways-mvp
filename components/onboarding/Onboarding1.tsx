@@ -61,7 +61,6 @@ function VoiceMode() {
     startListening,
     stopListening,
     triggerWelcome,
-    requiredFieldsRemaining,
   } = useVoiceOnboarding();
   const router = useRouter();
   const { language, isLanguageLocked } = useLanguage();
@@ -100,10 +99,9 @@ function VoiceMode() {
       style={{
         display: "flex",
         height: "100%",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "48px",
-        padding: "24px 48px",
+        alignItems: "stretch",
+        gap: "24px",
+        padding: "24px 32px",
         flexWrap: "wrap",
       }}
     >
@@ -115,6 +113,7 @@ function VoiceMode() {
           alignItems: "center",
           justifyContent: "center",
           flex: 1,
+          minWidth: 0,
           minHeight: "40%",
           gap: "24px",
         }}
@@ -217,8 +216,19 @@ function VoiceMode() {
         </AnimatePresence>
       </div>
 
-      {/* Profile panel — hidden on mobile, shown beside orb on desktop */}
-      <div className="hidden md:block">
+      {/* Profile panel — wider rail, centered in the space to the right of the orb */}
+      <div
+        className="hidden md:flex"
+        style={{
+          width: "min(400px, 36vw)",
+          minWidth: "300px",
+          flexShrink: 0,
+          alignItems: "flex-start",
+          justifyContent: "center",
+          paddingLeft: 12,
+          paddingRight: 20,
+        }}
+      >
         <ProfilePanel profile={profile} isComplete={isComplete} />
       </div>
 

@@ -104,19 +104,24 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
         </div>
       )}
 
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-5">
         {/* Left: info */}
         <div className="flex-1 min-w-0">
-          {/* Header row */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xl">{pathway.flag}</span>
-            <div className="min-w-0">
-              <h3 className="font-semibold text-[#171717] text-[14px] leading-tight truncate">
+          {/* Header: flag vertically centered with title block */}
+          <div className="flex gap-3 mb-2">
+            <span
+              className="text-[2rem] leading-none flex-shrink-0 self-center select-none"
+              aria-hidden
+            >
+              {pathway.flag}
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h3 className="font-semibold text-[#171717] text-[17px] sm:text-[18px] leading-snug tracking-tight">
                 {pathway.name}
               </h3>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[11px] text-[#A3A3A3]">{pathway.category}</span>
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${diff.bg} ${diff.text} ${diff.border}`}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+                <span className="text-[13px] text-[#737373]">{pathway.category}</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${diff.bg} ${diff.text} ${diff.border}`}>
                   {pathway.difficulty}
                 </span>
               </div>
@@ -124,13 +129,13 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
           </div>
 
           {/* Timeline + fee */}
-          <div className="flex items-center gap-3 text-[11px] text-[#A3A3A3] mt-2 mb-3">
-            <span className="flex items-center gap-1">
-              <Clock size={10} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[#737373] mt-3 mb-3">
+            <span className="flex items-center gap-1.5">
+              <Clock size={13} className="text-[#A3A3A3] shrink-0" />
               {pathway.estimatedTimeline}
             </span>
-            <span className="flex items-center gap-1">
-              <DollarSign size={10} />
+            <span className="flex items-center gap-1.5">
+              <DollarSign size={13} className="text-[#A3A3A3] shrink-0" />
               {pathway.processingFeeRange}
             </span>
           </div>
