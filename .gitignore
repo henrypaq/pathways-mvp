@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Claude Code — local permissions; never commit API keys or tokens
+.claude/settings.local.json
+
 # vercel
 .vercel
 
