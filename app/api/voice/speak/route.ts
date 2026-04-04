@@ -15,9 +15,12 @@ export async function POST(request: NextRequest) {
       return new Response(null, { status: 204 })
     }
 
-    const voiceId = lang === 'fr'
-      ? process.env.ELEVENLABS_VOICE_ID_FR!
-      : process.env.ELEVENLABS_VOICE_ID_EN!
+    const VOICE_IDS = {
+      en: 'EXAVITQu4vr4xnSDxMaL', // Sarah/Rachel — English
+      fr: 'cgSgspJ2msm6clMCkdW9',  // Jessica — French (multilingual model handles pronunciation)
+    }
+
+    const voiceId = VOICE_IDS[(lang as string) === 'fr' ? 'fr' : 'en']
 
     console.log('[speak] calling ElevenLabs:', {
       voiceId,
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           text: cleaned,
-          model_id: process.env.ELEVENLABS_MODEL_ID ?? 'eleven_multilingual_v2',
+          model_id: 'eleven_multilingual_v2',
           language_code: lang === 'fr' ? 'fr' : 'en',
           voice_settings: {
             stability: 0.5,
