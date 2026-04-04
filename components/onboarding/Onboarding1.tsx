@@ -10,7 +10,6 @@ import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
-import { useLanguage } from "@/context/LanguageContext";
 
 function VoiceMode() {
   const {
@@ -23,13 +22,11 @@ function VoiceMode() {
     triggerWelcome,
   } = useVoiceOnboarding();
   const router = useRouter();
-  const { isLanguageLocked } = useLanguage();
 
-  // Fire welcome once, only after language is locked so TTS plays in the correct language
+  // Language is always locked before the user reaches voice mode — fire immediately on mount
   useEffect(() => {
-    if (!isLanguageLocked) return;
     triggerWelcome();
-  }, [isLanguageLocked]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSpeechSupported =
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();
