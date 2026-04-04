@@ -408,6 +408,7 @@ export function ApplicationWorkspace({
       submission: t('workspace.step.submission'),
     }
     for (const s of BASE_STEP_DEFS) {
+      if (s.id === 'submission') continue  // added explicitly after roadmap steps below
       const key = `base:${s.id}`
       entries.push({
         key,
