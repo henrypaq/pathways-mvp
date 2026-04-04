@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useOnboardingStore } from "@/lib/onboardingStore";
@@ -10,47 +10,7 @@ import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
-import { useLanguage, type Language } from "@/context/LanguageContext";
-import {
-  voiceLanguageFromLocale,
-  type VoiceLanguage,
-} from "@/lib/voiceLocale";
-
-// Welcome messages spoken when the user picks a language (English vs French voice only for now).
-const WELCOME_TEXT: Record<VoiceLanguage, string> = {
-  en: "Welcome to Pathways. I'm here to guide you through your immigration journey.",
-  fr: "Bienvenue sur Pathways. Je suis ici pour vous accompagner dans votre parcours d'immigration.",
-}
-
-async function playWelcomeMessage(
-  lang: Language,
-  signal: AbortSignal,
-): Promise<void> {
-  const voice = voiceLanguageFromLocale(lang)
-  const text = WELCOME_TEXT[voice]
-  try {
-    const res = await fetch('/api/voice/speak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal,
-      body: JSON.stringify({ text, lang: voice }),
-    })
-    if (!res.ok) return
-    const buffer = await res.arrayBuffer()
-    if (signal.aborted || buffer.byteLength === 0) return
-    const blob = new Blob([buffer], { type: 'audio/mpeg' })
-    const url = URL.createObjectURL(blob)
-    const audio = new Audio(url)
-    const cleanup = () => URL.revokeObjectURL(url)
-    audio.onended = cleanup
-    audio.onerror = cleanup
-    signal.addEventListener('abort', () => { audio.pause(); cleanup() }, { once: true })
-    audio.play().catch(cleanup)
-  } catch {
-    /* AbortError or network failure — silently ignore */
-  }
-}
-
+import { useLanguage } from "@/context/LanguageContext";
 
 function VoiceMode() {
   const {
@@ -63,23 +23,13 @@ function VoiceMode() {
     triggerWelcome,
   } = useVoiceOnboarding();
   const router = useRouter();
-  const { language, isLanguageLocked } = useLanguage();
-  const welcomeAbortRef = useRef<AbortController | null>(null);
+  const { isLanguageLocked } = useLanguage();
 
-  // Fire welcome once when voice mode becomes active
-  useEffect(() => {
-    triggerWelcome();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Play a localised welcome message the first time the user locks their language
+  // Fire welcome once, only after language is locked so TTS plays in the correct language
   useEffect(() => {
     if (!isLanguageLocked) return;
-    welcomeAbortRef.current?.abort();
-    const ac = new AbortController();
-    welcomeAbortRef.current = ac;
-    void playWelcomeMessage(language, ac.signal);
-    return () => ac.abort();
-  }, [isLanguageLocked, language]);
+    triggerWelcome();
+  }, [isLanguageLocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSpeechSupported =
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();

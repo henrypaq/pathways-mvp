@@ -62,6 +62,8 @@ export interface UseVoiceOnboardingReturn {
 export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   const mountedRef = useRef(true)
   const { language } = useLanguage()
+  const languageRef = useRef(language)
+  useEffect(() => { languageRef.current = language }, [language])
   const initialHistory = loadVoiceHistory()
 
   const [orbState, setOrbState] = useState<OrbState>('idle')
@@ -305,38 +307,26 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
         return
       }
 
-      let sentences = cleanText
-        .split(/(?<=[.!?])\s+/)
-        .map((s: string) => s.trim())
-        .filter((s: string) => s.length > 2)
-      if (sentences.length === 0) sentences = [cleanText]
-
-      console.log('[voice] sentences:', sentences)
       setOrbTracked('speaking')
 
-      for (const sentence of sentences) {
-        if (!mountedRef.current || ac.signal.aborted) break
-        console.log('[voice] speaking:', sentence)
-        try {
-          const speakRes = await fetch('/api/voice/speak', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: ac.signal,
-            body: JSON.stringify({
-              text: sentence,
-              lang: voiceLanguageFromLocale(language),
-            }),
-          })
-          if (!speakRes.ok) {
-            console.error('[voice] speak error:', speakRes.status)
-            continue
-          }
+      try {
+        const speakRes = await fetch('/api/voice/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: ac.signal,
+          body: JSON.stringify({
+            text: cleanText,
+            lang: voiceLanguageFromLocale(languageRef.current),
+          }),
+        })
+        if (!speakRes.ok) {
+          console.error('[voice] TTS failed:', speakRes.status)
+        } else {
           await playAudioResponse(speakRes, ac.signal)
-          console.log('[voice] sentence done')
-        } catch (err) {
-          if (err instanceof DOMException && err.name === 'AbortError') break
-          console.error('[voice] speak threw:', err)
         }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        console.error('[voice] speak threw:', err)
       }
 
       if (!mountedRef.current || ac.signal.aborted) return
