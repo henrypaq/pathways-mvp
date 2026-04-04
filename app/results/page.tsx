@@ -13,6 +13,7 @@ import { AuthNav } from '@/components/auth/AuthNav'
 import { PageSurface } from '@/components/ui/PageSurface'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/context/I18nContext'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 
@@ -21,11 +22,12 @@ function isLessThan24HoursOld(createdAt: string): boolean {
 }
 
 function LoadingState() {
+  const { t } = useI18n()
   const steps = [
-    'Reading your profile...',
-    'Searching IRCC database...',
-    'Analyzing eligibility...',
-    'Building your roadmap...',
+    t('results.step.1'),
+    t('results.step.2'),
+    t('results.step.3'),
+    t('results.step.4'),
   ]
   const [stepIndex, setStepIndex] = useState(0)
 
@@ -57,7 +59,7 @@ function LoadingState() {
       </div>
 
       <div className="text-center">
-        <h2 className="text-[18px] font-semibold text-[#171717] mb-2">Analyzing your profile</h2>
+        <h2 className="text-[18px] font-semibold text-[#171717] mb-2">{t('results.loading.title')}</h2>
         <AnimatePresence mode="wait">
           <motion.p
             key={stepIndex}
@@ -88,20 +90,21 @@ function LoadingState() {
 }
 
 function ErrorState({ onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useI18n()
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
       <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
         <AlertTriangle size={20} className="text-red-500" />
       </div>
       <div>
-        <h2 className="text-[16px] font-semibold text-[#171717] mb-1">Could not load recommendations</h2>
-        <p className="text-[13px] text-[#737373]">We couldn&apos;t load your results. Please refresh the page or try again in a moment.</p>
+        <h2 className="text-[16px] font-semibold text-[#171717] mb-1">{t('results.error.title')}</h2>
+        <p className="text-[13px] text-[#737373]">{t('results.error.body')}</p>
       </div>
       <button
         onClick={onRetry}
         className="flex items-center gap-2 px-4 py-2 bg-[#534AB7] text-white text-sm font-medium rounded-full hover:bg-[#3C3489] transition-colors"
       >
-        <RefreshCw size={13} /> Try again
+        <RefreshCw size={13} /> {t('results.tryAgain')}
       </button>
     </div>
   )
@@ -109,6 +112,7 @@ function ErrorState({ onRetry }: { message: string; onRetry: () => void }) {
 
 export default function ResultsPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [profile, setProfile] = useState<Partial<PathwaysProfile> | null>(null)
   const [result, setResult] = useState<RecommendationsResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -238,7 +242,7 @@ export default function ResultsPage() {
             onClick={() => router.push('/onboarding')}
             className="flex items-center gap-1.5 text-[12px] text-[#A3A3A3] hover:text-[#171717] transition-colors"
           >
-            <ArrowLeft size={14} /> Back
+            <ArrowLeft size={14} /> {t('results.back')}
           </button>
           <Link
             href="/"
@@ -251,7 +255,7 @@ export default function ResultsPage() {
         <div className="flex items-center gap-3 sm:gap-4">
           {result && (
             <span className="text-[11px] text-[#A3A3A3]">
-              Based on {(result.sources ?? []).length} official IRCC sources
+              {t('results.sources', { n: String((result.sources ?? []).length) })}
             </span>
           )}
           {profile && !loading && (
@@ -259,7 +263,7 @@ export default function ResultsPage() {
               onClick={() => fetchRecommendations(profile, true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#534AB7] hover:bg-[#EEEDFE] rounded-full transition-colors"
             >
-              <RefreshCw size={11} /> Refresh
+              <RefreshCw size={11} /> {t('results.refresh')}
             </button>
           )}
           <AuthNav />
@@ -303,7 +307,7 @@ export default function ResultsPage() {
                   className="mb-6"
                 >
                   <h1 className="text-[22px] font-bold text-[#171717] leading-tight mb-1.5">
-                    Your Immigration Pathways
+                    {t('results.title')}
                   </h1>
                   <p className="text-[13px] text-[#737373] leading-relaxed max-w-xl">
                     {result.profileSummary}
@@ -313,7 +317,7 @@ export default function ResultsPage() {
                 {/* Pathway match cards */}
                 <div className="mb-2">
                   <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">
-                    Top Matches — {(result.pathways ?? []).length} pathways
+                    {t('results.topMatches', { n: String((result.pathways ?? []).length) })}
                   </h2>
                   <div className="space-y-4">
                     {(result.pathways ?? []).map((pathway, i) => (
@@ -337,7 +341,7 @@ export default function ResultsPage() {
                     className="mt-8 pt-6 border-t border-[#E5E5E5]"
                   >
                     <h2 className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">
-                      Official Sources
+                      {t('results.officialSources')}
                     </h2>
                     <div className="flex flex-wrap gap-2">
                       {(result.sources ?? []).map((s, i) => (
@@ -388,7 +392,7 @@ export default function ResultsPage() {
                         Start my application
                       </button>
                       <p className="text-center text-[10px] text-[#A3A3A3] mt-2">
-                        AI-assisted document checklist & timeline
+                        {t('results.docChecklist')}
                       </p>
                     </motion.div>
                   </motion.div>
@@ -397,7 +401,7 @@ export default function ResultsPage() {
                     <div className="w-10 h-10 rounded-full bg-[#F5F5F5] flex items-center justify-center">
                       <Sparkles size={16} className="text-[#A3A3A3]" />
                     </div>
-                    <p className="text-[12px] text-[#A3A3A3]">Select a pathway to see your personalized roadmap</p>
+                    <p className="text-[12px] text-[#A3A3A3]">{t('results.selectPathway')}</p>
                   </div>
                 )}
               </aside>

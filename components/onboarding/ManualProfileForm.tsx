@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -9,6 +9,7 @@ import type { PathwaysProfile } from '@/types/voice'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
 import { CountrySelect } from '@/components/ui/CountrySelect'
 import { DateOfBirthPicker } from '@/components/ui/DateOfBirthPicker'
+import { useI18n } from '@/context/I18nContext'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
@@ -80,28 +81,7 @@ const TEST_NAME_LABELS: Record<string, string> = {
   TCF_Canada: 'TCF Canada',
   other: 'Other',
 }
-const SCORE_HINTS: Record<string, string> = {
-  IELTS: '0–9',
-  TEF_Canada: 'varies',
-  CELPIP: '1–12',
-  TCF_Canada: '0–699',
-  other: 'your score',
-}
-const SKILL_LEVEL_OPTIONS = [
-  { id: 'professional', label: 'Professional / managerial', hint: 'e.g. engineer, nurse, accountant, manager' },
-  { id: 'skilled_trade', label: 'Skilled trade / technical', hint: 'e.g. electrician, plumber, chef, technician' },
-  { id: 'other', label: 'Other / service work', hint: 'e.g. retail, admin, labour, service' },
-] as const
-
 const YEARS_OPTIONS = ['0', '1', '2', '3', '4', '5+'] as const
-const YEARS_LABELS: Record<string, string> = {
-  '0': '< 1 yr',
-  '1': '1 yr',
-  '2': '2 yrs',
-  '3': '3 yrs',
-  '4': '4 yrs',
-  '5+': '5+ yrs',
-}
 const SELF_ASSESSMENT_OPTIONS = ['native', 'fluent', 'intermediate', 'basic'] as const
 
 function readStoredProfile(): Partial<PathwaysProfile> {
@@ -111,6 +91,35 @@ function readStoredProfile(): Partial<PathwaysProfile> {
     return raw ? (JSON.parse(raw) as Partial<PathwaysProfile>) : {}
   } catch {
     return {}
+  }
+}
+
+function formValuesFromStorage(): FormValues {
+  const stored = readStoredProfile()
+  return {
+    ...EMPTY,
+    current_country: String(stored.current_country ?? ''),
+    nationality: String(stored.nationality ?? ''),
+    destination_country: String(stored.destination_country ?? ''),
+    date_of_birth: String(stored.date_of_birth ?? ''),
+    purpose: String(stored.purpose ?? ''),
+    language_ability: String(stored.language_ability ?? ''),
+    timeline: String(stored.timeline ?? ''),
+    occupation: String(stored.occupation ?? ''),
+    is_employed: stored.is_employed === true ? 'yes' : stored.is_employed === false ? 'no' : '',
+    language_test_taken: stored.language_test?.taken ?? '',
+    language_test_name: stored.language_test?.testName ?? '',
+    language_test_other_name: stored.language_test?.otherTestName ?? '',
+    language_test_overall: stored.language_test?.overallScore?.toString() ?? '',
+    language_test_self: stored.language_test?.selfAssessment ?? '',
+    years_of_experience: stored.years_of_experience ?? '',
+    occupation_skill_level: stored.occupation_skill_level ?? '',
+    education_level: String(stored.education_level ?? ''),
+    family_situation: String(stored.family_situation ?? ''),
+    has_canadian_sponsor: stored.has_canadian_sponsor === true ? 'yes' : stored.has_canadian_sponsor === false ? 'no' : '',
+    has_canadian_relative: stored.has_canadian_relative === true ? 'yes' : stored.has_canadian_relative === false ? 'no' : '',
+    has_job_offer: stored.has_job_offer === true ? 'yes' : stored.has_job_offer === false ? 'no' : '',
+    current_visa_status: String(stored.current_visa_status ?? ''),
   }
 }
 
@@ -161,15 +170,16 @@ interface SelectInputProps {
   value: string
   onChange: (v: string) => void
   options: readonly string[]
+  labels?: Partial<Record<string, string>>
   placeholder?: string
 }
 
-function SelectInput({ value, onChange, options, placeholder }: SelectInputProps) {
+function SelectInput({ value, onChange, options, labels, placeholder }: SelectInputProps) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
       <option value="">{placeholder ?? 'Select…'}</option>
       {options.map((o) => (
-        <option key={o} value={o}>{o}</option>
+        <option key={o} value={o}>{labels?.[o] ?? o}</option>
       ))}
     </select>
   )
@@ -204,10 +214,11 @@ function YesNoToggle({ value, onChange, yesLabel = 'Yes', noLabel = 'No' }: Togg
 }
 
 function ThreeWayToggle({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n()
   const options = [
-    { id: 'yes', label: 'Yes' },
-    { id: 'no', label: 'No' },
-    { id: 'planning', label: 'Planning to' },
+    { id: 'yes', label: t('form.testTaken.yes') },
+    { id: 'no', label: t('form.testTaken.no') },
+    { id: 'planning', label: t('form.testTaken.planning') },
   ]
   return (
     <div className="flex gap-2">
@@ -230,6 +241,15 @@ function ThreeWayToggle({ value, onChange }: { value: string; onChange: (v: stri
 }
 
 function YearsSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n()
+  const yearsLabels: Record<string, string> = {
+    '0': t('form.years.lt1'),
+    '1': t('form.years.1'),
+    '2': t('form.years.2'),
+    '3': t('form.years.3'),
+    '4': t('form.years.4'),
+    '5+': t('form.years.5plus'),
+  }
   return (
     <div className="flex flex-wrap gap-2">
       {YEARS_OPTIONS.map((opt) => (
@@ -243,7 +263,7 @@ function YearsSelector({ value, onChange }: { value: string; onChange: (v: strin
               : 'bg-[#F9F9F9] text-gray-500 border-[#E5E5E5] hover:border-[#534AB7] hover:text-[#534AB7]'
           }`}
         >
-          {YEARS_LABELS[opt]}
+          {yearsLabels[opt] ?? opt}
         </button>
       ))}
     </div>
@@ -254,40 +274,11 @@ function YearsSelector({ value, onChange }: { value: string; onChange: (v: strin
 
 export function ManualProfileForm() {
   const { prevStep } = useOnboardingStore()
+  const { t } = useI18n()
   const router = useRouter()
-  const [values, setValues] = useState<FormValues>(EMPTY)
+  const [values, setValues] = useState<FormValues>(() => formValuesFromStorage())
   const [showOptional, setShowOptional] = useState(false)
   const [saved, setSaved] = useState(false)
-
-  // Pre-fill from any existing localStorage data
-  useEffect(() => {
-    const stored = readStoredProfile()
-    setValues((prev) => ({
-      ...prev,
-      current_country: String(stored.current_country ?? ''),
-      nationality: String(stored.nationality ?? ''),
-      destination_country: String(stored.destination_country ?? ''),
-      date_of_birth: String(stored.date_of_birth ?? ''),
-      purpose: String(stored.purpose ?? ''),
-      language_ability: String(stored.language_ability ?? ''),
-      timeline: String(stored.timeline ?? ''),
-      occupation: String(stored.occupation ?? ''),
-      is_employed: stored.is_employed === true ? 'yes' : stored.is_employed === false ? 'no' : '',
-      language_test_taken: stored.language_test?.taken ?? '',
-      language_test_name: stored.language_test?.testName ?? '',
-      language_test_other_name: stored.language_test?.otherTestName ?? '',
-      language_test_overall: stored.language_test?.overallScore?.toString() ?? '',
-      language_test_self: stored.language_test?.selfAssessment ?? '',
-      years_of_experience: stored.years_of_experience ?? '',
-      occupation_skill_level: stored.occupation_skill_level ?? '',
-      education_level: String(stored.education_level ?? ''),
-      family_situation: String(stored.family_situation ?? ''),
-      has_canadian_sponsor: stored.has_canadian_sponsor === true ? 'yes' : stored.has_canadian_sponsor === false ? 'no' : '',
-      has_canadian_relative: stored.has_canadian_relative === true ? 'yes' : stored.has_canadian_relative === false ? 'no' : '',
-      has_job_offer: stored.has_job_offer === true ? 'yes' : stored.has_job_offer === false ? 'no' : '',
-      current_visa_status: String(stored.current_visa_status ?? ''),
-    }))
-  }, [])
 
   const set = (field: keyof FormValues) => (v: string) =>
     setValues((prev) => ({ ...prev, [field]: v }))
@@ -299,6 +290,47 @@ export function ManualProfileForm() {
     values.purpose &&
     values.language_ability &&
     values.timeline
+
+  const purposeLabels: Record<string, string> = {
+    Work: t('form.purpose.work'),
+    Study: t('form.purpose.study'),
+    'Family Reunification': t('form.purpose.family'),
+    'Asylum/Refugee': t('form.purpose.asylum'),
+    Retirement: t('form.purpose.retirement'),
+    'Digital Nomad': t('form.purpose.digitalNomad'),
+  }
+  const languageLabels: Record<string, string> = {
+    None: t('form.language.none'),
+    Basic: t('form.language.basic'),
+    Intermediate: t('form.language.intermediate'),
+    Fluent: t('form.language.fluent'),
+    Native: t('form.language.native'),
+  }
+  const timelineLabels: Record<string, string> = {
+    ASAP: t('form.timeline.asap'),
+    'Within 3 months': t('form.timeline.3months'),
+    'Within 6 months': t('form.timeline.6months'),
+    'Within a year': t('form.timeline.1year'),
+    'Just exploring': t('form.timeline.exploring'),
+  }
+  const educationLabels: Record<string, string> = {
+    'High school': t('form.edu.highschool'),
+    "Bachelor's": t('form.edu.bachelor'),
+    "Master's": t('form.edu.master'),
+    PhD: t('form.edu.phd'),
+    Other: t('form.edu.other'),
+  }
+  const familyLabels: Record<string, string> = {
+    Single: t('form.family.single'),
+    Married: t('form.family.married'),
+    'Married with children': t('form.family.marriedChildren'),
+    'Single parent': t('form.family.singleParent'),
+  }
+  const skillLevelOptions = [
+    { id: 'professional', label: t('form.skillLevel.professional'), hint: t('form.skillLevel.professional.hint') },
+    { id: 'skilled_trade', label: t('form.skillLevel.skilled_trade'), hint: t('form.skillLevel.skilled_trade.hint') },
+    { id: 'other', label: t('form.skillLevel.other'), hint: t('form.skillLevel.other.hint') },
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -377,7 +409,7 @@ export function ManualProfileForm() {
           className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
           <ArrowLeft size={14} />
-          Back
+          {t('form.back')}
         </button>
       </div>
 
@@ -385,38 +417,38 @@ export function ManualProfileForm() {
       <div className="flex-1 overflow-y-auto px-6 pb-8">
         <div className="max-w-lg mx-auto">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-[#171717]">Your immigration profile</h2>
-            <p className="text-sm text-gray-400 mt-1">Fill in the details below and we&apos;ll find your best pathways.</p>
-            <p className="text-sm text-[#737373] mt-2">* Required fields</p>
+            <h2 className="text-xl font-semibold text-[#171717]">{t('form.title')}</h2>
+            <p className="text-sm text-gray-400 mt-1">{t('form.subtitle')}</p>
+            <p className="text-sm text-[#737373] mt-2">{t('form.required')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Required fields */}
-            <Field label="Current country of residence" required>
+            <Field label={t('form.field.currentCountry')} required>
               <CountrySelect value={values.current_country} onChange={set('current_country')} placeholder="Search country..." />
             </Field>
 
-            <Field label="Nationality / passport country" required>
+            <Field label={t('form.field.nationality')} required>
               <CountrySelect value={values.nationality} onChange={set('nationality')} placeholder="Search country..." />
             </Field>
 
-            <Field label="Date of birth">
+            <Field label={t('form.field.dob')}>
               <DateOfBirthPicker value={values.date_of_birth} onChange={set('date_of_birth')} />
             </Field>
 
-            <Field label="Destination country" required>
+            <Field label={t('form.field.destination')} required>
               <CountrySelect value={values.destination_country} onChange={set('destination_country')} placeholder="Search country..." />
             </Field>
 
-            <Field label="Purpose of move" required>
-              <SelectInput value={values.purpose} onChange={set('purpose')} options={PURPOSE_OPTIONS} />
+            <Field label={t('form.field.purpose')} required>
+              <SelectInput value={values.purpose} onChange={set('purpose')} options={PURPOSE_OPTIONS} labels={purposeLabels} placeholder={t('form.select')} />
             </Field>
 
-            <Field label="Language ability in destination country" required>
-              <SelectInput value={values.language_ability} onChange={set('language_ability')} options={LANGUAGE_OPTIONS} />
+            <Field label={t('form.field.languageAbility')} required>
+              <SelectInput value={values.language_ability} onChange={set('language_ability')} options={LANGUAGE_OPTIONS} labels={languageLabels} placeholder={t('form.select')} />
             </Field>
 
-            <Field label="Have you taken an official language test?">
+            <Field label={t('form.languageTestTaken')}>
               <ThreeWayToggle value={values.language_test_taken} onChange={set('language_test_taken')} />
             </Field>
 
@@ -431,7 +463,7 @@ export function ManualProfileForm() {
                   className="overflow-hidden"
                 >
                   <div className="flex flex-col gap-4 pt-1 pl-3 border-l-2 border-[#534AB7]/20">
-                    <Field label="Which test?">
+                    <Field label={t('form.field.whichTest')}>
                       <div className="flex flex-wrap gap-2">
                         {TEST_NAME_OPTIONS.map((opt) => (
                           <button
@@ -471,7 +503,7 @@ export function ManualProfileForm() {
                                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                                   className="overflow-hidden"
                                 >
-                                  <Field label="Test name">
+                                  <Field label={t('form.field.testName')}>
                                     <input
                                       type="text"
                                       value={values.language_test_other_name}
@@ -483,7 +515,7 @@ export function ManualProfileForm() {
                                 </motion.div>
                               )}
                             </AnimatePresence>
-                            <Field label="Overall score">
+                            <Field label={t('form.field.overallScore')}>
                               <input
                                 type="number"
                                 step="any"
@@ -517,7 +549,7 @@ export function ManualProfileForm() {
                   className="overflow-hidden"
                 >
                   <div className="pt-1 pl-3 border-l-2 border-[#534AB7]/20">
-                    <Field label="How would you describe your level?">
+                    <Field label={t('form.field.languageLevel')}>
                       <div className="flex flex-wrap gap-2">
                         {SELF_ASSESSMENT_OPTIONS.map((opt) => (
                           <button
@@ -540,8 +572,8 @@ export function ManualProfileForm() {
               )}
             </AnimatePresence>
 
-            <Field label="Timeline / urgency" required>
-              <SelectInput value={values.timeline} onChange={set('timeline')} options={TIMELINE_OPTIONS} />
+            <Field label={t('form.field.timeline')} required>
+              <SelectInput value={values.timeline} onChange={set('timeline')} options={TIMELINE_OPTIONS} labels={timelineLabels} placeholder={t('form.select')} />
             </Field>
 
             {/* Optional fields toggle */}
@@ -557,7 +589,7 @@ export function ManualProfileForm() {
               >
                 <ChevronDown size={15} />
               </motion.span>
-              {showOptional ? 'Hide extra details' : 'Add more details +'}
+              {showOptional ? t('form.hideDetails') : t('form.addDetails')}
             </button>
 
             <AnimatePresence initial={false}>
@@ -570,12 +602,12 @@ export function ManualProfileForm() {
                   className="overflow-hidden"
                 >
                   <div className="flex flex-col gap-4 pt-1 border-t border-[#F0F0F0]">
-                    <Field label="Occupation / job title">
+                    <Field label={t('form.field.occupation')}>
                       <TextInput value={values.occupation} onChange={set('occupation')} placeholder="e.g. Software Engineer" />
                     </Field>
 
-                    <Field label="Currently employed">
-                      <YesNoToggle value={values.is_employed} onChange={set('is_employed')} />
+                    <Field label={t('form.field.employed')}>
+                      <YesNoToggle value={values.is_employed} onChange={set('is_employed')} yesLabel={t('form.yes')} noLabel={t('form.no')} />
                     </Field>
 
                     <AnimatePresence initial={false}>
@@ -589,12 +621,12 @@ export function ManualProfileForm() {
                           className="overflow-hidden"
                         >
                           <div className="flex flex-col gap-4">
-                            <Field label="Years of relevant work experience">
+                            <Field label={t('form.field.experience')}>
                               <YearsSelector value={values.years_of_experience} onChange={set('years_of_experience')} />
                             </Field>
-                            <Field label="Type of work">
+                            <Field label={t('form.field.skillLevel')}>
                               <div className="flex flex-col gap-2">
-                                {SKILL_LEVEL_OPTIONS.map((opt) => (
+                                {skillLevelOptions.map((opt) => (
                                   <button
                                     key={opt.id}
                                     type="button"
@@ -616,27 +648,27 @@ export function ManualProfileForm() {
                       )}
                     </AnimatePresence>
 
-                    <Field label="Education level">
-                      <SelectInput value={values.education_level} onChange={set('education_level')} options={EDUCATION_OPTIONS} />
+                    <Field label={t('form.field.education')}>
+                      <SelectInput value={values.education_level} onChange={set('education_level')} options={EDUCATION_OPTIONS} labels={educationLabels} placeholder={t('form.select')} />
                     </Field>
 
-                    <Field label="Family situation">
-                      <SelectInput value={values.family_situation} onChange={set('family_situation')} options={FAMILY_OPTIONS} />
+                    <Field label={t('form.field.family')}>
+                      <SelectInput value={values.family_situation} onChange={set('family_situation')} options={FAMILY_OPTIONS} labels={familyLabels} placeholder={t('form.select')} />
                     </Field>
 
-                    <Field label="Spouse or partner is a Canadian citizen or PR?">
-                      <YesNoToggle value={values.has_canadian_sponsor} onChange={set('has_canadian_sponsor')} />
+                    <Field label={t('form.field.hasSponsor')}>
+                      <YesNoToggle value={values.has_canadian_sponsor} onChange={set('has_canadian_sponsor')} yesLabel={t('form.yes')} noLabel={t('form.no')} />
                     </Field>
 
-                    <Field label="Parent, sibling, or adult child is a Canadian citizen or PR?">
-                      <YesNoToggle value={values.has_canadian_relative} onChange={set('has_canadian_relative')} />
+                    <Field label={t('form.field.hasRelative')}>
+                      <YesNoToggle value={values.has_canadian_relative} onChange={set('has_canadian_relative')} yesLabel={t('form.yes')} noLabel={t('form.no')} />
                     </Field>
 
-                    <Field label="Job offer in destination country">
-                      <YesNoToggle value={values.has_job_offer} onChange={set('has_job_offer')} />
+                    <Field label={t('form.field.hasJobOffer')}>
+                      <YesNoToggle value={values.has_job_offer} onChange={set('has_job_offer')} yesLabel={t('form.yes')} noLabel={t('form.no')} />
                     </Field>
 
-                    <Field label="Current visa / immigration status">
+                    <Field label={t('form.field.visaStatus')}>
                       <TextInput value={values.current_visa_status} onChange={set('current_visa_status')} placeholder="e.g. Student visa, tourist visa…" />
                     </Field>
                   </div>
@@ -655,7 +687,7 @@ export function ManualProfileForm() {
                     className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-medium"
                   >
                     <Check size={16} />
-                    Profile saved
+                    {t('profile.saved')}
                   </motion.div>
                 ) : (
                   <motion.button
@@ -669,7 +701,7 @@ export function ManualProfileForm() {
                         : 'bg-[#E5E5E5] text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    Find my pathways →
+                    {t('form.submit')}
                   </motion.button>
                 )}
               </AnimatePresence>

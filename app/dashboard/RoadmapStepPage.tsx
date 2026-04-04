@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ExternalLink, CheckCircle2, Circle, Clock, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { updateRoadmapStep, type StepStatus } from './actions'
 import type { RecommendedRoadmapStep } from '@/lib/types'
+import { useI18n } from '@/context/I18nContext'
 
 // ── Step guide library ────────────────────────────────────────────────────────
 // Matched against step title/id by keyword. Each entry provides a concrete
@@ -381,6 +382,7 @@ export function RoadmapStepPage({
   initialStatus: StepStatus
   onSaved: (stepId: string, status: StepStatus) => void
 }) {
+  const { t } = useI18n()
   const [status, setStatus] = useState<StepStatus>(initialStatus)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -418,9 +420,11 @@ export function RoadmapStepPage({
 
       {/* Status selector — prominent cards */}
       <div>
-        <p className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">Your progress</p>
+        <p className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">{t('workspace.yourProgress')}</p>
         <div className="grid grid-cols-3 gap-2">
-          {STATUS_CONFIG.map(({ value, label, sublabel, icon, activeClass, inactiveClass }) => {
+          {STATUS_CONFIG.map(({ value, icon, activeClass, inactiveClass }) => {
+            const label = t(`workspace.status.${value}` as Parameters<typeof t>[0])
+            const sublabel = t(`workspace.status.${value}.sub` as Parameters<typeof t>[0])
             const isActive = status === value
             return (
               <motion.button
@@ -458,12 +462,12 @@ export function RoadmapStepPage({
       {/* Meta row */}
       <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-[#737373] border-t border-[#F0F0F0] pt-4">
         <span>
-          <span className="text-[#A3A3A3]">Estimated time: </span>
+          <span className="text-[#A3A3A3]">{t('workspace.estimatedTime')}: </span>
           <span className="font-medium text-[#525252]">{step.estimatedTime}</span>
         </span>
         {step.dependencies.length > 0 && (
           <span>
-            <span className="text-[#A3A3A3]">Depends on: </span>
+            <span className="text-[#A3A3A3]">{t('workspace.dependsOn')}: </span>
             <span className="font-medium text-[#525252]">{step.dependencies.join(', ')}</span>
           </span>
         )}
@@ -474,7 +478,7 @@ export function RoadmapStepPage({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[#534AB7] hover:text-[#3C3489] font-medium transition-colors"
           >
-            Official IRCC page <ExternalLink size={11} />
+            {t('workspace.irccPage')} <ExternalLink size={11} />
           </a>
         )}
       </div>
@@ -483,7 +487,7 @@ export function RoadmapStepPage({
       {guide ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <p className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider">Step-by-step guide</p>
+            <p className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider">{t('workspace.stepGuide')}</p>
             <div className="flex-1 h-px bg-[#F0F0F0]" />
           </div>
 
@@ -559,7 +563,7 @@ export function RoadmapStepPage({
         step.documents && step.documents.length > 0 ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <p className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider">Documents to prepare</p>
+              <p className="text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider">{t('workspace.docsToPrepare')}</p>
               <div className="flex-1 h-px bg-[#F0F0F0]" />
             </div>
             <div className="space-y-1.5">

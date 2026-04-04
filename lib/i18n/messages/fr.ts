@@ -82,6 +82,7 @@ export const frMessages: Record<MessageKey, string> = {
   'profile.complete': 'Profil complet \u2713',
   'profile.additional': 'Informations compl\u00e9mentaires',
   'profile.language': 'Langue',
+  'profile.saved': 'Enregistr\u00e9',
 
   // ── Manual profile form ────────────────────────────��──────────────────────
   'form.title': 'Votre profil d\u2019immigration',
@@ -229,6 +230,18 @@ export const frMessages: Record<MessageKey, string> = {
   'workspace.stepsLabel': '\u00c9tapes',
   'workspace.stepsDone': '{{n}} / 9 \u00e9tapes termin\u00e9es',
   'workspace.metCount': '{{n}}/{{total}} satisfaites',
+  'workspace.irccPage': 'Page officielle IRCC',
+  'workspace.yourProgress': 'Votre progression',
+  'workspace.estimatedTime': 'Dur\u00e9e estim\u00e9e',
+  'workspace.dependsOn': 'D\u00e9pend de',
+  'workspace.stepGuide': '\u00c9tapes \u00e0 suivre',
+  'workspace.docsToPrepare': 'Documents \u00e0 pr\u00e9parer',
+  'workspace.status.notStarted': 'Non commenc\u00e9',
+  'workspace.status.notStarted.sub': 'En attente',
+  'workspace.status.inProgress': 'En cours',
+  'workspace.status.inProgress.sub': 'En cours de r\u00e9alisation',
+  'workspace.status.done': 'Termin\u00e9',
+  'workspace.status.done.sub': 'Compl\u00e9t\u00e9',
 
   // ── Submission step ───────────────────────────────────────────────────────
   'submit.title': 'Liste de contr\u00f4le de soumission',

@@ -81,6 +81,7 @@ export const enMessages = {
   'profile.complete': 'Profile complete \u2713',
   'profile.additional': 'Additional details',
   'profile.language': 'Language',
+  'profile.saved': 'Saved',
 
   // ── Manual profile form ───────────────────────────────────────────────────
   'form.title': 'Your immigration profile',
@@ -228,6 +229,18 @@ export const enMessages = {
   'workspace.stepsLabel': 'Steps',
   'workspace.stepsDone': '{{n}} / 9 steps done',
   'workspace.metCount': '{{n}}/{{total}} met',
+  'workspace.irccPage': 'Official IRCC page',
+  'workspace.yourProgress': 'Your progress',
+  'workspace.estimatedTime': 'Estimated time',
+  'workspace.dependsOn': 'Depends on',
+  'workspace.stepGuide': 'Step-by-step guide',
+  'workspace.docsToPrepare': 'Documents to prepare',
+  'workspace.status.notStarted': 'Not started',
+  'workspace.status.notStarted.sub': 'Waiting',
+  'workspace.status.inProgress': 'In progress',
+  'workspace.status.inProgress.sub': 'Working on it',
+  'workspace.status.done': 'Done',
+  'workspace.status.done.sub': 'Completed',
 
   // ── Submission step ───────────────────────────────────────────────────────
   'submit.title': 'Submission checklist',

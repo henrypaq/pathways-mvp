@@ -1,5 +1,5 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { HTMLAttributes } from "react";
 
@@ -24,7 +24,7 @@ export function Card({ className, hover, selected, padding = "md", children, ...
         hover && !selected && "hover:border-[#534AB7] hover:-translate-y-1 hover:shadow-[0_4px_12px_rgba(83,74,183,0.12)] cursor-pointer",
         className
       )}
-      {...(props as any)}
+      {...(props as HTMLMotionProps<"div">)}
     >
       {children}
     </motion.div>

@@ -15,7 +15,9 @@ export function ProfilePreferredLanguage() {
   const { language, setLanguage } = useLanguage()
 
   const value = useMemo(
-    () => LOGIN_LANGUAGE_OPTIONS.find((o) => o.value === language) ?? null,
+    () =>
+      LOGIN_LANGUAGE_OPTIONS.find((o) => o.value === language) ??
+      LOGIN_LANGUAGE_OPTIONS[0],
     [language],
   )
 

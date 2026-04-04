@@ -40,8 +40,10 @@ export default function OnboardingPage() {
   const [needsLangSelect, setNeedsLangSelect] = useState<boolean | null>(null)
 
   useEffect(() => {
-    const hasLang = !!localStorage.getItem(LANGUAGE_KEY)
-    setNeedsLangSelect(!hasLang)
+    queueMicrotask(() => {
+      const hasLang = !!localStorage.getItem(LANGUAGE_KEY)
+      setNeedsLangSelect(!hasLang)
+    })
   }, [])
 
   // Guard: if somehow step >= 2 is reached, redirect to results

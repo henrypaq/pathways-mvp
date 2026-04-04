@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/context/I18nContext";
 
 type Props = {
   nextPath?: string;
@@ -14,6 +15,7 @@ export function GoogleSignInButton({
   className,
   children,
 }: Props) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export function GoogleSignInButton({
         setPending(false);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("email.genericError"));
       setPending(false);
     }
   }
@@ -54,11 +56,11 @@ export function GoogleSignInButton({
         }
       >
         {pending ? (
-          "Redirecting…"
+          t("google.redirecting")
         ) : (
           <>
             <GoogleGlyph />
-            {children ?? "Continue with Google"}
+            {children ?? t("google.continue")}
           </>
         )}
       </button>

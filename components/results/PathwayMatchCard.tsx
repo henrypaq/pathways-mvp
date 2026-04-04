@@ -182,7 +182,10 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={(e) => { e.stopPropagation(); onSelect() }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelect()
+              }}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${
                 isSelected
                   ? 'bg-[#534AB7] text-white'

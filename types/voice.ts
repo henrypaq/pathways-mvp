@@ -47,6 +47,8 @@ export interface PathwaysProfile {
   has_canadian_sponsor?: boolean
   /** Parent, sibling, or adult child who is a Canadian citizen or permanent resident */
   has_canadian_relative?: boolean
+  /** UI language preference — stored alongside profile fields */
+  preferred_language?: string
 }
 
 export interface ConversationTurn {
@@ -129,4 +131,5 @@ export const PROFILE_FIELD_LABELS: Record<keyof PathwaysProfile, string> = {
   occupation_skill_level: 'Occupation skill level',
   has_canadian_sponsor: 'Canadian sponsor (spouse/partner)',
   has_canadian_relative: 'Canadian relative',
+  preferred_language: 'Preferred language',
 }

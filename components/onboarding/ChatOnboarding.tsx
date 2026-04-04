@@ -7,20 +7,20 @@ import { useRouter } from 'next/navigation'
 import { useTextOnboarding } from '@/hooks/useTextOnboarding'
 import { ProfilePanel } from '@/components/voice/ProfilePanel'
 import type { ChatMessage } from '@/types/voice'
+import { useI18n } from '@/context/I18nContext'
 
 export function ChatOnboarding() {
   const { messages, profile, isComplete, isLoading, sendMessage } = useTextOnboarding()
+  const { t } = useI18n()
   const router = useRouter()
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, isLoading])
 
-  // Auto-focus input on mount
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -162,7 +162,7 @@ export function ChatOnboarding() {
                 gap: '12px',
               }}
             >
-              <span>Profile complete ✓ — You&apos;re ready to explore your pathways</span>
+              <span>{t('chat.complete')}</span>
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() => router.push('/results')}
@@ -178,7 +178,7 @@ export function ChatOnboarding() {
                   flexShrink: 0,
                 }}
               >
-                See my pathways →
+                {t('chat.seePathways')}
               </motion.button>
             </motion.div>
           )}
@@ -195,14 +195,14 @@ export function ChatOnboarding() {
           }}
           className="bg-[#F5F5F5] border border-transparent focus-within:border-[#534AB7] focus-within:bg-white transition-colors duration-200"
         >
-          <label htmlFor="chat-input" className="sr-only">Type your answer</label>
+          <label htmlFor="chat-input" className="sr-only">{t('chat.placeholder')}</label>
           <textarea
             id="chat-input"
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your answer..."
+            placeholder={t('chat.placeholder')}
             disabled={isLoading}
             rows={1}
             style={{
@@ -242,7 +242,7 @@ export function ChatOnboarding() {
         </div>
       </div>
 
-      {/* Profile panel — desktop only; rail centers a wider card */}
+      {/* Profile panel — desktop only */}
       <div
         className="hidden md:flex"
         style={{

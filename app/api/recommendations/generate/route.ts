@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { scoreAllPathways } from '@/lib/scoring/pathwayScorer'
 import { mapProfileToScorer } from '@/lib/scoring/mapProfileToScorer'
 
-export async function POST(_request: Request): Promise<NextResponse> {
+export async function POST(): Promise<NextResponse> {
   try {
     // Initialize the server-side Supabase client (rehydrates session from request cookies)
     const supabase = await createClient()

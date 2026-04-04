@@ -321,7 +321,7 @@ function scoreExpressEntry(profile: UserProfile): PathwayResult {
 
 function scorePNP(profile: UserProfile): PathwayResult {
   const requirements: RequirementScore[] = []
-  let hardGateFailed = false
+  const hardGateFailed = false
 
   // --- Occupation (weight 0.30) ---
   const occupationScore = isSkilled(profile) ? 1.0 : 0.0
