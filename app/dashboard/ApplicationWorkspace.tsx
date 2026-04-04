@@ -215,9 +215,7 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onN
   }).length
 
   return (
-    <div
-      className="flex w-full max-w-[328px] flex-col overflow-hidden max-h-[calc(100vh-6rem)] flex-shrink-0 rounded-2xl border border-[#E5E5E5] bg-white p-5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
-    >
+    <div className="flex w-full min-w-0 max-w-[400px] flex-col rounded-2xl border border-[#E5E5E5] bg-white p-5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
         Application Score
       </p>
@@ -236,7 +234,7 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onN
               {score >= 70 ? 'Strong' : score >= 40 ? 'In progress' : 'Getting started'}
             </span>
           </div>
-          <div style={{ height: '6px', background: '#F0F0F0', borderRadius: '999px', overflow: 'hidden' }}>
+          <div className="h-1.5 rounded-full bg-[#F0F0F0] overflow-hidden">
             <motion.div
               animate={{ width: `${score}%` }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -246,12 +244,45 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onN
         </div>
       </div>
 
-      <div style={{ height: '1px', background: '#F0F0F0', marginBottom: '16px' }} />
+      <div className="h-px bg-[#F0F0F0] mb-4" />
+
+      {/* Requirements first */}
+      {requirements.length > 0 && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', marginBottom: '8px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A3A3A3' }}>
+              Requirements
+            </p>
+            <span style={{ fontSize: '10px', color: '#A3A3A3' }}>{metCount}/{requirements.length} met</span>
+          </div>
+          <div className="flex flex-col gap-0.5 mb-4">
+            {requirements.map((req, i) => {
+              const suggestion = getSuggestedDoc(req)
+              const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
+              return (
+                <div key={i} className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg">
+                  <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                    isMet ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
+                  }`}>
+                    {isMet && (
+                      <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
+                        <path d="M0.5 2l1.5 1.5 3.5-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '11px', color: isMet ? '#A3A3A3' : '#525252', lineHeight: '1.4' }}>{req}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="h-px bg-[#F0F0F0] mb-4" />
+        </>
+      )}
 
       <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: '10px' }}>
         Steps
       </p>
-      <div className="flex flex-col gap-0.5 overflow-y-auto min-h-0 pr-0.5 -mr-0.5">
+      <div className="flex flex-col gap-0.5">
         {entries.map((e) => (
           <button
             key={e.key}
@@ -295,39 +326,6 @@ function FloatingChecklist({ entries, score, requirements, uploadedDocTypes, onN
             </div>
           </button>
         ))}
-
-        {/* Requirements section */}
-        {requirements.length > 0 && (
-          <>
-            <div style={{ height: '1px', background: '#F0F0F0', margin: '10px 0 12px' }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', marginBottom: '6px' }}>
-              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A3A3A3' }}>
-                Requirements
-              </p>
-              <span style={{ fontSize: '10px', color: '#A3A3A3' }}>{metCount}/{requirements.length} met</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {requirements.map((req, i) => {
-                const suggestion = getSuggestedDoc(req)
-                const isMet = suggestion ? uploadedDocTypes.has(suggestion.docType) : false
-                return (
-                  <div key={i} className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg">
-                    <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                      isMet ? 'bg-[#1D9E75] border-[#1D9E75]' : 'border-[#D4D4D4]'
-                    }`}>
-                      {isMet && (
-                        <svg width="6" height="4" viewBox="0 0 6 4" fill="none">
-                          <path d="M0.5 2l1.5 1.5 3.5-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <span style={{ fontSize: '11px', color: isMet ? '#A3A3A3' : '#525252', lineHeight: '1.4' }}>{req}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
       </div>
     </div>
   )
@@ -439,12 +437,12 @@ export function ApplicationWorkspace({
   const motionKey = activeKey
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#FAFAFA]">
-      {/* Full-width progress bar */}
-      <div className="flex-shrink-0 bg-[#FAFAFA] border-b border-[#EBEBEB] px-6 py-3">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#FAFAFA]">
+      {/* Progress strip — white bar so the track reads clearly vs page background */}
+      <div className="flex-shrink-0 bg-white border-b border-[#EBEBEB] px-6 py-3">
         <div className="flex items-center gap-3 w-full">
           <span className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider flex-shrink-0">Progress</span>
-          <div className="flex-1 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 rounded-full bg-white shadow-[inset_0_0_0_1px_#E5E5E5] overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-[#534AB7] to-[#7C74D4]"
               animate={{ width: `${progressPct}%` }}
@@ -463,11 +461,11 @@ export function ApplicationWorkspace({
         </div>
       </div>
 
-      {/* Body — single canvas color so sidebar column matches main content */}
-      <div className="relative flex-1 flex overflow-hidden bg-[#FAFAFA] min-h-0">
-        {/* Scrollable step content */}
-        <div className="flex-1 overflow-y-auto bg-[#FAFAFA] min-w-0">
-          <div className="max-w-3xl mx-auto px-8 py-8">
+      {/* Single vertical scroll (scrollbar at viewport right); sidebar is sticky */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain bg-[#FAFAFA]">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-8 px-6 py-8 lg:px-8 pb-16">
+        <div className="flex-1 min-w-0 w-full">
+          <div className="max-w-3xl mx-auto lg:mx-0 px-1 sm:px-2 md:px-4 py-8">
             {/* Step header */}
             <div className="flex items-center gap-3 mb-7">
               <span className="w-7 h-7 rounded-full bg-[#534AB7] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">
@@ -562,8 +560,7 @@ export function ApplicationWorkspace({
           </div>
         </div>
 
-        {/* Checklist — wider column, centered in the right rail */}
-        <div className="hidden lg:flex shrink-0 bg-[#FAFAFA] w-[min(400px,36vw)] min-w-[280px] flex-col items-center pt-6 pb-8 pl-3 pr-4 xl:pl-5 xl:pr-10">
+        <aside className="w-full max-w-md mx-auto lg:mx-0 lg:w-[min(420px,38vw)] lg:min-w-[300px] shrink-0 lg:sticky lg:top-5 lg:self-start lg:max-h-[calc(100dvh-7.5rem)] lg:overflow-y-auto">
           <FloatingChecklist
             entries={sidebarEntries}
             score={score}
@@ -571,6 +568,7 @@ export function ApplicationWorkspace({
             uploadedDocTypes={uploadedDocTypes}
             onNavigate={handleNavigate}
           />
+        </aside>
         </div>
       </div>
     </div>
