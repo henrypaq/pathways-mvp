@@ -10,7 +10,11 @@ import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
+<<<<<<< HEAD
 import { useLanguage } from "@/context/LanguageContext";
+=======
+import { useI18n } from "@/context/I18nContext";
+>>>>>>> 0856c1525bbb16de7ea709f8aa69baf60331fc73
 
 function VoiceMode() {
   const {
@@ -32,6 +36,7 @@ function VoiceMode() {
     triggerWelcome();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+<<<<<<< HEAD
   // Mid-session language switch: stop current audio and re-greet in new language
   useEffect(() => {
     if (isFirstRender.current) {
@@ -41,6 +46,9 @@ function VoiceMode() {
     restartConversation();
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
+=======
+  const { t } = useI18n();
+>>>>>>> 0856c1525bbb16de7ea709f8aa69baf60331fc73
   const isSpeechSupported =
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();
 
@@ -84,12 +92,12 @@ function VoiceMode() {
         {/* Unsupported browser warning — shown ABOVE orb so it's seen before tapping */}
         {!isSpeechSupported && (
           <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-[10px] text-sm text-amber-700 text-center max-w-xs">
-            Voice mode requires Chrome or Edge. Please switch browsers or{" "}
+            {t('voice.browserWarning')}{" "}
             <button
               onClick={() => router.push("/onboarding")}
               className="underline font-medium"
             >
-              choose another mode
+              {t('voice.chooseMode')}
             </button>
             .
           </div>
@@ -101,7 +109,7 @@ function VoiceMode() {
             state={orbState}
             onTap={handleOrbTap}
             size="160px"
-            statusLabels={isComplete ? { idle: "All set" } : undefined}
+            statusLabels={isComplete ? { idle: t('voice.allSet') } : undefined}
           />
         </div>
         <div className={`hidden sm:block ${!isSpeechSupported ? "opacity-40 pointer-events-none" : ""}`}>
@@ -109,7 +117,7 @@ function VoiceMode() {
             state={orbState}
             onTap={handleOrbTap}
             size="220px"
-            statusLabels={isComplete ? { idle: "All set" } : undefined}
+            statusLabels={isComplete ? { idle: t('voice.allSet') } : undefined}
           />
         </div>
 
@@ -124,8 +132,8 @@ function VoiceMode() {
             }}
           >
             {orbState === "idle"
-              ? "Tap the orb to speak after Pathways finishes each message."
-              : "Tap again when you're ready to continue."}
+              ? t('voice.hintTap')
+              : t('voice.hintContinue')}
           </p>
         )}
 
@@ -170,7 +178,7 @@ function VoiceMode() {
                 cursor: "pointer",
               }}
             >
-              See my pathways →
+              {t('voice.seePathways')}
             </motion.button>
           )}
         </AnimatePresence>

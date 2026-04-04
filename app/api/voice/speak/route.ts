@@ -2,17 +2,15 @@ import { NextRequest } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const VOICE_IDS: Record<string, string> = {
-      en: 'EXAVITQu4vr4xnSDxMaL', // Sarah — English
-      fr: 'cgSgspJ2msm6clMCkdW9',  // Jessica — French
+    const { text, lang = 'en' } = await request.json()
+    console.log('[speak] incoming request:', { text: text?.slice(0, 60), lang })
+
+    const VOICE_IDS = {
+      en: 'EXAVITQu4vr4xnSDxMaL', // Sarah/Rachel — English
+      fr: 'cgSgspJ2msm6clMCkdW9',  // Jessica — French (multilingual model handles pronunciation)
     }
 
-    const { text, lang } = await request.json()
-    const voiceId = VOICE_IDS[lang] ?? VOICE_IDS['en']
-
-    // Log for verification
-    console.log('[speak] voice selected:', { lang, voiceId })
-    console.log('[speak] incoming request:', { text: text?.slice(0, 60), lang })
+    const voiceId = VOICE_IDS[(lang as string) === 'fr' ? 'fr' : 'en']
 
     // Strip control tokens before sending to ElevenLabs
     const cleaned = text

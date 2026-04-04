@@ -6,10 +6,38 @@ import { REQUIRED_PROFILE_FIELDS, PROFILE_FIELD_LABELS } from '@/types/voice'
 import { getCountryLabel } from '@/lib/countries'
 import { useLanguage } from '@/context/LanguageContext'
 import { useI18n } from '@/context/I18nContext'
+import type { MessageKey } from '@/lib/i18n/messages/en'
 
 const COUNTRY_FIELDS = new Set<keyof PathwaysProfile>(['current_country', 'nationality', 'destination_country'])
 
 const PROFILE_PANEL_HIDDEN_OPTIONAL = new Set<keyof PathwaysProfile>(['language_test'])
+
+const FIELD_I18N_KEY: Partial<Record<keyof PathwaysProfile, MessageKey>> = {
+  current_country:       'profile.field.currentCountry',
+  nationality:           'profile.field.nationality',
+  destination_country:   'profile.field.destination',
+  purpose:               'profile.field.purpose',
+  language_ability:      'profile.field.language',
+  timeline:              'profile.field.timeline',
+  occupation:            'profile.field.occupation',
+  is_employed:           'profile.field.employed',
+  education_level:       'profile.field.education',
+  family_situation:      'profile.field.family',
+  has_job_offer:         'profile.field.jobOffer',
+  current_visa_status:   'profile.field.visaStatus',
+  income_savings:        'profile.field.income',
+  prior_immigration_attempts: 'profile.field.priorAttempts',
+  age:                   'profile.field.age',
+  date_of_birth:         'profile.field.dob',
+  destination_region:    'profile.field.region',
+  field_of_study:        'profile.field.fieldOfStudy',
+  language_scores:       'profile.field.languageScores',
+  language_test:         'profile.field.languageTest',
+  years_of_experience:   'profile.field.experience',
+  occupation_skill_level:'profile.field.skillLevel',
+  has_canadian_sponsor:  'profile.field.sponsor',
+  has_canadian_relative: 'profile.field.relative',
+}
 
 function displayValue(field: keyof PathwaysProfile, value: string): string {
   if (COUNTRY_FIELDS.has(field) && /^[A-Z]{2}$/.test(value)) {
@@ -87,10 +115,11 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
             {REQUIRED_PROFILE_FIELDS.map((field) => {
               const value = profile[field]
               const filled = value !== undefined && value !== ''
+              const i18nKey = FIELD_I18N_KEY[field]
               return (
                 <FieldRow
                   key={field}
-                  label={PROFILE_FIELD_LABELS[field]}
+                  label={i18nKey ? t(i18nKey) : PROFILE_FIELD_LABELS[field]}
                   value={filled ? displayValue(field, String(value)) : null}
                   required
                 />
@@ -109,9 +138,12 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
                   {t('profile.additional')}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {filledOptional.map((field) => (
-                    <FieldRow key={field} label={PROFILE_FIELD_LABELS[field]} value={displayValue(field, String(profile[field]))} required={false} />
-                  ))}
+                  {filledOptional.map((field) => {
+                    const i18nKey = FIELD_I18N_KEY[field]
+                    return (
+                      <FieldRow key={field} label={i18nKey ? t(i18nKey) : PROFILE_FIELD_LABELS[field]} value={displayValue(field, String(profile[field]))} required={false} />
+                    )
+                  })}
                 </div>
               </motion.div>
             )}
