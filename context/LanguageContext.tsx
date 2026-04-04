@@ -105,6 +105,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         } catch {
           /* ignore */
         }
+        if (!cancelled) setIsLanguageLocked(true)
         return
       }
 
@@ -119,8 +120,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
           const detected = localeFromNavigatorLanguage(navigator.language ?? '')
           if (detected && !cancelled) {
             setLanguageState(detected)
+            setIsLanguageLocked(true)
           }
         }
+        if (!cancelled) setIsLanguageLocked(true)
       } catch {
         /* ignore */
       }

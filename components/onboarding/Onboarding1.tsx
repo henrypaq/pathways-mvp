@@ -216,17 +216,17 @@ function VoiceMode() {
         </AnimatePresence>
       </div>
 
-      {/* Profile panel — wider rail, centered in the space to the right of the orb */}
+      {/* Profile panel — inset from the right edge, vertically centered with the orb */}
       <div
         className="hidden md:flex"
         style={{
-          width: "min(400px, 36vw)",
+          width: "min(400px, 34vw)",
           minWidth: "300px",
           flexShrink: 0,
-          alignItems: "flex-start",
+          alignItems: "center",
           justifyContent: "center",
-          paddingLeft: 12,
-          paddingRight: 20,
+          paddingLeft: "clamp(20px, 4vw, 48px)",
+          paddingRight: "clamp(32px, 8vw, 120px)",
         }}
       >
         <ProfilePanel profile={profile} isComplete={isComplete} />

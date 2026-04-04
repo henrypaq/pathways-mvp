@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { PathwaysProfile } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS, PROFILE_FIELD_LABELS } from '@/types/voice'
 import { getCountryLabel } from '@/lib/countries'
-import { LanguageSelector } from '@/components/voice/LanguageSelector'
 
 const COUNTRY_FIELDS = new Set<keyof PathwaysProfile>(['current_country', 'nationality', 'destination_country'])
 
@@ -34,7 +33,7 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
 
   return (
     <div
-      className="flex w-full max-w-[328px] min-w-[280px] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+      className="flex w-full max-w-[328px] min-w-[280px] max-h-[min(78vh,620px)] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
       style={{ padding: '20px' }}
     >
       {/* Header */}
@@ -86,7 +85,7 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
       </AnimatePresence>
 
       {/* Scrollable content */}
-      <div style={{ overflowY: 'auto', flex: 1 }}>
+      <div className="min-h-0 flex-1" style={{ overflowY: 'auto' }}>
         {/* Required fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: filledOptional.length > 0 ? '16px' : '0' }}>
           {REQUIRED_PROFILE_FIELDS.map((field) => {
@@ -123,9 +122,6 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Language selector — always shown at the bottom of the panel */}
-      <LanguageSelector />
     </div>
   )
 }
