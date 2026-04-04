@@ -96,16 +96,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        try {
-          if (typeof navigator !== 'undefined') {
-            const detected = localeFromNavigatorLanguage(navigator.language ?? '')
-            if (detected && !cancelled) {
-              setLanguageState(detected)
-            }
-          }
-        } catch {
-          /* ignore */
-        }
+        // No saved preference yet: keep default English until the user picks in the language select.
         if (!cancelled) setIsLanguageLocked(true)
         return
       }
@@ -117,13 +108,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             setLanguageState(stored)
             setIsLanguageLocked(true)
           }
-        } else if (typeof navigator !== 'undefined') {
-          const detected = localeFromNavigatorLanguage(navigator.language ?? '')
-          if (detected && !cancelled) {
-            setLanguageState(detected)
-            setIsLanguageLocked(true)
-          }
         }
+        // No localStorage choice yet: default UI + select to English (do not infer from browser).
         if (!cancelled) setIsLanguageLocked(true)
       } catch {
         /* ignore */
