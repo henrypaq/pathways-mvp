@@ -1,5 +1,6 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
+import { mergeProfileData } from '@/lib/profileDataMerge'
 import type { PathwaysProfile } from '@/types/voice'
 
 function calculateCompleteness(profile: Partial<PathwaysProfile>): number {
@@ -58,11 +59,21 @@ export async function POST(request: Request): Promise<Response> {
     ? createClient(supabaseUrl, serviceKey)
     : serverClient  // fall back to session-scoped client
 
-  const completeness_score = calculateCompleteness(profile)
+  const { data: existingRow } = await adminClient
+    .from('profiles')
+    .select('data')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const mergedData = mergeProfileData(
+    existingRow?.data as Record<string, unknown>,
+    profile as Record<string, unknown>,
+  )
+  const completeness_score = calculateCompleteness(mergedData as Partial<PathwaysProfile>)
 
   const { error: updateError, data: updatedRows } = await adminClient
     .from('profiles')
-    .update({ data: profile, completeness_score })
+    .update({ data: mergedData, completeness_score })
     .eq('user_id', user.id)
     .select('id')
 
@@ -75,7 +86,7 @@ export async function POST(request: Request): Promise<Response> {
     // Row missing (trigger not applied) — insert as fallback
     const { error: insertError } = await adminClient
       .from('profiles')
-      .insert({ user_id: user.id, data: profile, completeness_score })
+      .insert({ user_id: user.id, data: mergedData, completeness_score })
     if (insertError) {
       console.error('[profile/save] insert error:', insertError.message)
       return Response.json({ error: insertError.message }, { status: 500 })

@@ -1,5 +1,13 @@
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking'
 
+/**
+ * Stored in profiles.data alongside PathwaysProfile fields.
+ * Voice, UI copy, and future localized features should read this.
+ */
+export type AppProfilePreferences = {
+  preferred_language?: 'en' | 'fr'
+}
+
 export interface PathwaysProfile {
   // Required
   current_country: string

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmailSignInForm } from "@/components/auth/EmailSignInForm";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { LoginLanguageSelector } from "@/components/auth/LoginLanguageSelector";
 import { PageSurface } from "@/components/ui/PageSurface";
 
 type Props = {
@@ -46,14 +47,15 @@ export default async function LoginPage({ searchParams }: Props) {
             Sign in to Pathways
           </h1>
           <p className="text-[15px] text-[#737373] leading-relaxed">
-            Sign in to save your profile and pick up your immigration journey on
-            any device.
+            Choose your language, then sign in to save your profile and continue
+            on any device.
           </p>
         </div>
 
         <div
           className="w-full max-w-[400px] rounded-[20px] border border-[#E5E5E5] bg-white p-8 md:p-9 shadow-[0_4px_40px_rgba(83,74,183,0.07)]"
         >
+          <LoginLanguageSelector />
           <EmailSignInForm nextPath={next} />
 
           <div className="relative my-8">
