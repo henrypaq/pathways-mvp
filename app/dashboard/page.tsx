@@ -55,24 +55,23 @@ export default async function DashboardPage({
     ?? pathways.find((p) => p.id === result.topPathwayId)
     ?? pathways[0]
 
-  // Get or create the user's case (needed for document uploads)
+  // Get or create the user's case (needed for document uploads).
+  // NOTE: selected_pathway_id is a UUID FK to public.pathways — AI-generated
+  // pathway IDs are kebab strings, not UUIDs, so we omit it here.
   let { data: userCase } = await supabase
     .from('cases')
     .select('id')
     .eq('user_id', user.id)
     .limit(1)
-    .single()
+    .maybeSingle()
 
   if (!userCase) {
-    const { data: newCase } = await supabase
+    const { data: newCase, error: caseError } = await supabase
       .from('cases')
-      .insert({
-        user_id: user.id,
-        profile_id: profile.id,
-        selected_pathway_id: selectedPathway?.id ?? null,
-      })
+      .insert({ user_id: user.id, profile_id: profile.id })
       .select('id')
       .single()
+    if (caseError) console.error('[dashboard] case insert error:', caseError.message)
     userCase = newCase
   }
 
