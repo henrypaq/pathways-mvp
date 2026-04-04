@@ -56,6 +56,7 @@ export interface UseVoiceOnboardingReturn {
   startListening: () => void
   stopListening: () => void
   triggerWelcome: () => void
+  restartConversation: () => void
   requiredFieldsRemaining: (keyof PathwaysProfile)[]
 }
 
@@ -362,6 +363,18 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     }, 300)
   }, [])
 
+  const restartConversation = useCallback(() => {
+    // Stop current audio and cancel any in-flight Claude/TTS request
+    stopPlaybackAndTts()
+    // Reset the welcome guard so triggerWelcome (or direct __INIT__) can fire again
+    hasWelcomed.current = false
+    // Short delay to let the browser release the audio element before a new stream starts
+    setTimeout(() => {
+      if (!mountedRef.current) return
+      void runTurnRef.current?.('__INIT__')
+    }, 150)
+  }, [stopPlaybackAndTts])
+
   const startListening = useCallback(() => {
     if (!mountedRef.current) return
     const Ctor = getSpeechRecognitionCtor()
@@ -475,6 +488,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     startListening,
     stopListening,
     triggerWelcome,
+    restartConversation,
     requiredFieldsRemaining,
   }
 }

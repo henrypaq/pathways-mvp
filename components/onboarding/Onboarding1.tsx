@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useOnboardingStore } from "@/lib/onboardingStore";
@@ -10,6 +10,7 @@ import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
+import { useLanguage } from "@/context/LanguageContext";
 
 function VoiceMode() {
   const {
@@ -20,13 +21,25 @@ function VoiceMode() {
     startListening,
     stopListening,
     triggerWelcome,
+    restartConversation,
   } = useVoiceOnboarding();
   const router = useRouter();
+  const { language } = useLanguage();
+  const isFirstRender = useRef(true);
 
   // Language is always locked before the user reaches voice mode — fire immediately on mount
   useEffect(() => {
     triggerWelcome();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mid-session language switch: stop current audio and re-greet in new language
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    restartConversation();
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSpeechSupported =
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();

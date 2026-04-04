@@ -25,9 +25,7 @@ export async function POST(request: NextRequest) {
       })),
       {
         role: 'user' as const,
-        content: transcript === '__INIT__'
-          ? 'Hello, I am ready to start.'
-          : transcript,
+        content: transcript,
       },
     ]
 
@@ -80,6 +78,17 @@ CRITICAL RULES:
 4. When all REQUIRED fields are collected, end with: ONBOARDING_COMPLETE
 5. Respond in whatever language the user speaks to you in.${langInstruction ? `\n${langInstruction}` : ''}
 6. Start with a warm welcome and first question.
+
+INIT TURN — when the user message is exactly '__INIT__':
+Respond with a warm, natural opening that:
+- Greets the user and introduces Pathways as their immigration guide
+- In ONE sentence explains what Pathways does
+- Immediately asks them to briefly describe their situation (where they are from, where they want to go, and why)
+- Keeps the entire response under 3 sentences — short enough to feel conversational, not a wall of text
+- Sounds warm and human, not robotic
+Example English tone (do not copy verbatim, generate naturally): "Welcome to Pathways — I'm here to guide you through your immigration journey. In just a few questions, I'll build a personalized roadmap for you. To get started, could you tell me briefly: where are you from, where do you want to go, and why?"
+Example French tone (do not copy verbatim, generate naturally): "Bienvenue sur Pathways — je suis ici pour vous accompagner dans votre parcours d'immigration. En quelques questions, je vais créer un plan personnalisé pour vous. Pour commencer, pourriez-vous me dire brièvement : d'où venez-vous, où souhaitez-vous aller, et pourquoi ?"
+This instruction applies ONLY when the message is '__INIT__'. All other turns follow normal conversation rules.
 
 Current profile: ${JSON.stringify(profile)}`,
             messages,
