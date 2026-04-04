@@ -10,6 +10,7 @@ import { SignOutButton } from '@/components/auth/SignOutButton'
 import { AccountBackButton } from '@/components/account/AccountBackButton'
 import { StartOverButton } from '@/app/dashboard/StartOverButton'
 import { PageSurface } from '@/components/ui/PageSurface'
+import { ProfilePreferredLanguage } from '@/app/dashboard/profile/ProfilePreferredLanguage'
 import { useI18n } from '@/context/I18nContext'
 import type { PathwaysProfile } from '@/types/voice'
 
@@ -137,6 +138,10 @@ export default function AccountPage() {
                 <p className="text-sm text-[#171717]">{meta.created}</p>
               </div>
             </div>
+          </div>
+
+          <div className="mb-8">
+            <ProfilePreferredLanguage />
           </div>
 
           <div className="space-y-3">

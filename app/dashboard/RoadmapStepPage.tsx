@@ -421,10 +421,9 @@ export function RoadmapStepPage({
       {/* Status selector — prominent cards */}
       <div>
         <p className="text-[10px] font-semibold text-[#A3A3A3] uppercase tracking-wider mb-3">{t('workspace.yourProgress')}</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="flex gap-2">
           {STATUS_CONFIG.map(({ value, icon, activeClass, inactiveClass }) => {
             const label = t(`workspace.status.${value}` as Parameters<typeof t>[0])
-            const sublabel = t(`workspace.status.${value}.sub` as Parameters<typeof t>[0])
             const isActive = status === value
             return (
               <motion.button
@@ -433,21 +432,18 @@ export function RoadmapStepPage({
                 disabled={pending}
                 onClick={() => void setStatusAndPersist(value)}
                 whileTap={{ scale: 0.97 }}
-                className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-2xl border-2 text-center transition-all duration-150 disabled:opacity-60 ${
+                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition-all duration-150 disabled:opacity-60 ${
                   isActive ? activeClass : inactiveClass
                 }`}
               >
-                <div className={`transition-transform duration-150 ${isActive ? 'scale-110' : ''}`}>
+                <div className={`flex-shrink-0 transition-transform duration-150 ${isActive ? 'scale-110' : ''}`}>
                   {icon}
                 </div>
-                <div>
-                  <p className="text-[12px] font-semibold leading-tight">{label}</p>
-                  <p className="text-[10px] opacity-70 mt-0.5">{sublabel}</p>
-                </div>
+                <p className="text-[12px] font-semibold whitespace-nowrap">{label}</p>
                 {isActive && (
                   <motion.div
                     layoutId="status-indicator"
-                    className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full"
+                    className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
                     style={{ background: value === 'done' ? '#1D9E75' : value === 'in_progress' ? '#534AB7' : '#A3A3A3' }}
                     transition={{ duration: 0.2 }}
                   />
