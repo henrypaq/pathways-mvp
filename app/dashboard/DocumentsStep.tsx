@@ -345,35 +345,34 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl transition-all cursor-pointer ${
+            className={`relative border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
               dragOver
                 ? 'border-[#534AB7] bg-[#EEEDFE]'
                 : 'border-[#E0DEFF] hover:border-[#534AB7] hover:bg-[#FAFAFE] bg-[#FDFCFF]'
             }`}
+            style={{ minHeight: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <div className="flex items-center gap-4 px-5 py-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+            <div className="flex flex-col items-center gap-3 py-8 px-6 text-center">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${
                 uploading ? 'bg-[#EEEDFE]' : dragOver ? 'bg-[#534AB7]' : 'bg-[#EEEDFE]'
               }`}>
                 {uploading
-                  ? <Loader2 size={18} className="text-[#534AB7] animate-spin" />
-                  : <Upload size={16} className={dragOver ? 'text-white' : 'text-[#534AB7]'} />
+                  ? <Loader2 size={22} className="text-[#534AB7] animate-spin" />
+                  : <Upload size={20} className={dragOver ? 'text-white' : 'text-[#534AB7]'} />
                 }
               </div>
-              <div className="min-w-0">
-                {uploading ? (
-                  <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
-                ) : (
-                  <>
-                    <p className="text-[13px] font-medium text-[#171717]">
-                      Drop files here, or <span className="text-[#534AB7]">click to browse</span>
-                    </p>
-                    <p className="text-[11px] text-[#A3A3A3] mt-0.5">
-                      PDF, JPG, PNG · Max 10 MB · Multiple files supported · AI identifies each document automatically
-                    </p>
-                  </>
-                )}
-              </div>
+              {uploading ? (
+                <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
+              ) : (
+                <>
+                  <p className="text-[13px] font-medium text-[#171717]">
+                    Drop files here, or <span className="text-[#534AB7]">click to browse</span>
+                  </p>
+                  <p className="text-[11px] text-[#A3A3A3] max-w-xs leading-relaxed">
+                    PDF, JPG, PNG · Max 10 MB · Multiple files at once · AI identifies each document automatically
+                  </p>
+                </>
+              )}
             </div>
             <input
               ref={fileInputRef}
