@@ -34,12 +34,9 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
   const filledOptional = optionalKeys.filter((k) => profile[k] !== undefined && profile[k] !== '')
 
   return (
-    <div
-      className="flex w-full max-w-[328px] min-w-[280px] max-h-[min(78vh,620px)] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
-      style={{ padding: '20px' }}
-    >
-      {/* Header */}
-      <div style={{ marginBottom: '16px' }}>
+    <div className="flex w-full max-w-[328px] min-w-[280px] max-h-[min(78vh,620px)] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      {/* Header — padded; scroll region below is full width so the bar sits on the card edge */}
+      <div className="shrink-0 px-5 pt-5 pb-4">
         <p
           className="text-gray-500"
           style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '12px' }}
@@ -78,16 +75,17 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="bg-green-50 text-green-700 border border-green-200"
-            style={{ borderRadius: '8px', padding: '8px 12px', marginBottom: '16px', fontSize: '12px', fontWeight: 500 }}
+            className="mx-5 mb-4 bg-green-50 text-green-700 border border-green-200"
+            style={{ borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: 500 }}
           >
             Profile complete ✓
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Scrollable content */}
-      <div className="min-h-0 flex-1" style={{ overflowY: 'auto' }}>
+      {/* Scrollable content — full card width; padding only on inner copy so scrollbar hugs the border */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="px-5 pb-4">
         {/* Required fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: filledOptional.length > 0 ? '16px' : '0' }}>
           {REQUIRED_PROFILE_FIELDS.map((field) => {
@@ -123,6 +121,7 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
 
       {/* Language selector */}
@@ -130,7 +129,7 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="mt-6 pt-6 border-t border-neutral-100 flex flex-col items-center gap-2"
+        className="shrink-0 border-t border-neutral-100 px-5 pb-5 pt-6 flex flex-col items-center gap-2"
       >
         <p className="text-xs text-neutral-400 text-center">
           {isLanguageLocked

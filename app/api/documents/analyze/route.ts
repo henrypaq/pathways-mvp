@@ -10,102 +10,64 @@ function getSupabaseAdmin() {
   return createClient(url, key)
 }
 
-// Type-specific extraction prompts — Claude returns structured JSON for each document type
-const EXTRACTION_PROMPTS: Record<string, string> = {
-  passport: `Extract fields from this passport. Return ONLY valid JSON:
-{
-  "name": "full name as printed",
-  "date_of_birth": "YYYY-MM-DD",
-  "nationality": "ISO-2 country code e.g. ET, IN, PH",
-  "passport_number": "document number",
-  "expiry_date": "YYYY-MM-DD",
-  "issuing_country": "ISO-2 country code"
-}
-Use null for any unreadable field.`,
+// Single combined prompt: detect type + extract data in one Claude call
+const COMBINED_PROMPT = `You are analyzing an immigration document. Do two things at once:
+1. Identify the document type
+2. Extract all relevant fields
 
-  employment_letter: `Extract fields from this employment letter or reference letter. Return ONLY valid JSON:
-{
-  "employer_name": "company or organization name",
-  "job_title": "exact job title as written",
-  "employment_type": "full-time or part-time",
-  "start_date": "YYYY-MM-DD or year only if exact date not present",
-  "annual_salary": "number only, no currency symbol",
-  "currency": "3-letter currency code e.g. CAD",
-  "weekly_hours": "number"
-}
-Use null for any field not present in the letter.`,
+Document types and their data schemas:
 
-  language_test: `Extract results from this language test certificate. Return ONLY valid JSON:
-{
-  "test_name": "one of: IELTS, CELPIP, TEF_Canada, TCF_Canada, or other",
-  "overall_score": "number",
-  "reading_score": "number or null",
-  "writing_score": "number or null",
-  "listening_score": "number or null",
-  "speaking_score": "number or null",
-  "test_date": "YYYY-MM-DD"
-}
-Use null for any score not shown.`,
+passport → { "name": "full name", "date_of_birth": "YYYY-MM-DD", "nationality": "ISO-2 code e.g. DZ, IN, PH", "passport_number": "document number", "expiry_date": "YYYY-MM-DD", "issuing_country": "ISO-2 code" }
 
-  education_credential: `Extract fields from this degree, diploma, or transcript. Return ONLY valid JSON:
-{
-  "institution_name": "full name of university or college",
-  "degree_type": "Bachelor's, Master's, PhD, Diploma, Certificate, etc.",
-  "field_of_study": "major or subject area",
-  "graduation_date": "YYYY-MM-DD or year only",
-  "country": "ISO-2 country code where institution is located"
-}
-Use null for any field not present.`,
+language_test → { "test_name": "one of: IELTS, CELPIP, TEF_Canada, TCF_Canada, or other", "overall_score": number, "reading_score": number or null, "writing_score": number or null, "listening_score": number or null, "speaking_score": number or null, "test_date": "YYYY-MM-DD" }
 
-  bank_statement: `Extract financial summary from this bank statement. Return ONLY valid JSON:
-{
-  "institution_name": "bank or financial institution name",
-  "account_type": "checking, savings, or other",
-  "closing_balance": "number only, no currency symbol",
-  "currency": "3-letter currency code e.g. CAD, USD",
-  "statement_start": "YYYY-MM-DD",
-  "statement_end": "YYYY-MM-DD"
-}
-Use null for any field not visible.`,
+employment_letter → { "employer_name": "company name", "job_title": "exact title", "employment_type": "full-time or part-time", "start_date": "YYYY-MM-DD or year only", "annual_salary": number or null, "currency": "3-letter code e.g. CAD", "weekly_hours": number or null }
 
-  police_certificate: `Extract fields from this police certificate or background check. Return ONLY valid JSON:
-{
-  "issuing_country": "ISO-2 country code",
-  "issue_date": "YYYY-MM-DD",
-  "subject_name": "name of person on certificate",
-  "result": "clear or flagged"
-}
-Use null for any field not present.`,
+education_credential → { "institution_name": "university or college name", "degree_type": "Bachelor's, Master's, PhD, Diploma, Certificate, etc.", "field_of_study": "major or subject", "graduation_date": "YYYY-MM-DD or year only", "country": "ISO-2 code where institution is located" }
 
-  photos: `Analyze these passport photos for IRCC compliance. Return ONLY valid JSON:
+bank_statement → { "institution_name": "bank name", "account_type": "checking, savings, or other", "closing_balance": number or null, "currency": "3-letter code", "statement_start": "YYYY-MM-DD", "statement_end": "YYYY-MM-DD" }
+
+police_certificate → { "issuing_country": "ISO-2 code", "issue_date": "YYYY-MM-DD", "subject_name": "person's name", "result": "clear or flagged" }
+
+photos → { "count": number, "white_background": true or false, "face_visible": true or false, "meets_ircc_specs": true or false, "issues": [] }
+
+other → {}
+
+Return ONLY valid JSON, no explanation, no markdown:
 {
-  "count": "number of photos",
-  "white_background": true or false,
-  "face_visible": true or false,
-  "meets_ircc_specs": true or false,
-  "issues": ["list any compliance issues, empty array if none"]
-}`,
+  "doc_type": "<one of: passport, language_test, employment_letter, education_credential, bank_statement, police_certificate, photos, other>",
+  "data": { <fields from the matching schema — use null for any unreadable field> }
+}`
+
+function extractJson(text: string): Record<string, unknown> | null {
+  const trimmed = text.trim()
+  // 1. Direct parse
+  try { return JSON.parse(trimmed) as Record<string, unknown> } catch { /* try next */ }
+  // 2. Strip code fences
+  const stripped = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+  try { return JSON.parse(stripped) as Record<string, unknown> } catch { /* try next */ }
+  // 3. Extract first complete {...} block
+  const match = trimmed.match(/\{[\s\S]*\}/)
+  if (match) {
+    try { return JSON.parse(match[0]) as Record<string, unknown> } catch { /* fall through */ }
+  }
+  return null
 }
 
-// Map document type + extracted fields → profile field updates to suggest to the user
 function buildProfileUpdates(
   docType: string,
-  extracted: Record<string, unknown>,
+  data: Record<string, unknown>,
 ): Record<string, unknown> {
   const updates: Record<string, unknown> = {}
 
   if (docType === 'passport') {
-    if (extracted.date_of_birth && typeof extracted.date_of_birth === 'string') {
-      updates.date_of_birth = extracted.date_of_birth
-    }
-    if (extracted.nationality && typeof extracted.nationality === 'string') {
-      updates.nationality = extracted.nationality
-    }
+    if (data.date_of_birth && typeof data.date_of_birth === 'string') updates.date_of_birth = data.date_of_birth
+    if (data.nationality && typeof data.nationality === 'string') updates.nationality = data.nationality
   }
 
   if (docType === 'language_test') {
-    const name = extracted.test_name as string | null
-    const score = extracted.overall_score != null ? Number(extracted.overall_score) : null
+    const name = data.test_name as string | null
+    const score = data.overall_score != null ? Number(data.overall_score) : null
     if (name && score != null && !isNaN(score)) {
       const knownTests = ['IELTS', 'CELPIP', 'TEF_Canada', 'TCF_Canada']
       updates.language_test = {
@@ -117,9 +79,7 @@ function buildProfileUpdates(
   }
 
   if (docType === 'employment_letter') {
-    if (extracted.job_title && typeof extracted.job_title === 'string') {
-      updates.occupation = extracted.job_title
-    }
+    if (data.job_title && typeof data.job_title === 'string') updates.occupation = data.job_title
     updates.is_employed = true
   }
 
@@ -138,18 +98,15 @@ export async function POST(request: Request): Promise<Response> {
 
   const supabase = getSupabaseAdmin()
 
-  // Fetch document record
   const { data: doc, error: docError } = await supabase
     .from('documents')
     .select('id, type, file_url, user_id, case_id')
     .eq('id', documentId)
     .single()
 
-  if (docError || !doc) {
-    return Response.json({ error: 'Document not found' }, { status: 404 })
-  }
+  if (docError || !doc) return Response.json({ error: 'Document not found' }, { status: 404 })
 
-  // Get a short-lived signed URL so we can download the file server-side
+  // Signed URL to download file
   const { data: signed, error: signedError } = await supabase.storage
     .from('documents')
     .createSignedUrl(doc.file_url as string, 60)
@@ -159,23 +116,18 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Could not access file in storage' }, { status: 500 })
   }
 
-  // Download the file
   const fileRes = await fetch(signed.signedUrl)
-  if (!fileRes.ok) {
-    return Response.json({ error: 'File download failed' }, { status: 500 })
-  }
+  if (!fileRes.ok) return Response.json({ error: 'File download failed' }, { status: 500 })
 
   const buffer = await fileRes.arrayBuffer()
   const base64 = Buffer.from(buffer).toString('base64')
 
-  // Determine media type from path extension and content-type header
   const path = (doc.file_url as string).toLowerCase()
   const contentType = fileRes.headers.get('content-type') ?? ''
   const isPdf = path.endsWith('.pdf') || contentType.includes('pdf')
   const isJpeg = path.match(/\.(jpg|jpeg)$/) || contentType.includes('jpeg')
   const mediaType = isPdf ? 'application/pdf' : isJpeg ? 'image/jpeg' : 'image/png'
 
-  // Build the content block (document for PDFs, image for raster files) — used for type detection + extraction
   type PdfSource = { type: 'base64'; media_type: 'application/pdf'; data: string }
   type ImageSource = { type: 'base64'; media_type: 'image/jpeg' | 'image/png'; data: string }
 
@@ -183,52 +135,49 @@ export async function POST(request: Request): Promise<Response> {
     ? ({ type: 'document' as const, source: { type: 'base64', media_type: 'application/pdf', data: base64 } as PdfSource })
     : ({ type: 'image' as const, source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png', data: base64 } as ImageSource })
 
-  // Auto-detect document type if not set
-  let docType = doc.type as string | null
-  if (!docType || docType === 'other') {
-    try {
-      const detectionMsg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 30,
-        messages: [{
-          role: 'user',
-          content: [
-            contentBlock,
-            { type: 'text', text: 'What type of document is this? Reply with exactly one word from this list: passport, language_test, employment_letter, education_credential, bank_statement, police_certificate, photos, other' },
-          ],
-        }],
-      })
-      const raw = detectionMsg.content[0].type === 'text'
-        ? detectionMsg.content[0].text.trim().toLowerCase().split(/\s+/)[0]
-        : 'other'
-      const VALID_TYPES = new Set(['passport', 'language_test', 'employment_letter', 'education_credential', 'bank_statement', 'police_certificate', 'photos'])
-      docType = VALID_TYPES.has(raw) ? raw : 'other'
-      await supabase.from('documents').update({ type: docType }).eq('id', documentId)
-    } catch {
-      docType = 'other'
-    }
-  }
-
-  const prompt = EXTRACTION_PROMPTS[docType] ?? 'Extract all relevant information from this document as JSON.'
-
+  // Single combined Claude call: detect type + extract data
+  let docType = (doc.type as string | null) ?? null
   let extracted: Record<string, unknown> = {}
+
   try {
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{
         role: 'user',
-        content: [contentBlock, { type: 'text', text: prompt }],
+        content: [contentBlock, { type: 'text', text: COMBINED_PROMPT }],
       }],
     })
 
-    const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}'
-    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-    extracted = JSON.parse(clean) as Record<string, unknown>
+    const raw = msg.content[0].type === 'text' ? msg.content[0].text : ''
+    const parsed = extractJson(raw)
+
+    if (parsed) {
+      const detectedType = typeof parsed.doc_type === 'string' ? parsed.doc_type : null
+      const VALID_TYPES = new Set(['passport', 'language_test', 'employment_letter', 'education_credential', 'bank_statement', 'police_certificate', 'photos'])
+
+      if (detectedType && VALID_TYPES.has(detectedType)) {
+        docType = detectedType
+      } else if (!docType) {
+        docType = 'other'
+      }
+
+      extracted = (parsed.data as Record<string, unknown>) ?? {}
+    } else {
+      // Claude returned something but we couldn't parse it — soft failure
+      console.warn('[documents/analyze] Could not parse JSON response:', raw.slice(0, 200))
+      extracted = {}
+      if (!docType) docType = 'other'
+    }
   } catch (err) {
     console.error('[documents/analyze] Claude error:', err instanceof Error ? err.message : err)
-    // Don't fail the whole request — store what we know and return
-    extracted = { _error: 'Extraction failed', _raw: String(err) }
+    extracted = { _error: 'Extraction failed' }
+    if (!docType) docType = 'other'
+  }
+
+  // Update document type in DB if it was unknown
+  if ((doc.type as string | null) !== docType) {
+    await supabase.from('documents').update({ type: docType }).eq('id', documentId)
   }
 
   const profileUpdates = buildProfileUpdates(docType, extracted)
@@ -243,7 +192,6 @@ export async function POST(request: Request): Promise<Response> {
     console.error('[documents/analyze] DB update error:', updateError.message)
   }
 
-  // Upsert a document_assessment row (requirement_id null until pathway requirements are wired)
   await supabase.from('document_assessments').upsert({
     document_id: documentId,
     requirement_id: null,
@@ -252,7 +200,7 @@ export async function POST(request: Request): Promise<Response> {
     issues: [],
   }, { onConflict: 'document_id' })
 
-  console.log(`[documents/analyze] ${docType} document ${documentId} analyzed — ${Object.keys(extracted).length} fields extracted, ${Object.keys(profileUpdates).length} profile updates`)
+  console.log(`[documents/analyze] ${docType} document ${documentId} — ${Object.keys(extracted).length} fields, ${Object.keys(profileUpdates).length} profile updates`)
 
   return Response.json({ extracted, profileUpdates, detectedType: docType })
 }

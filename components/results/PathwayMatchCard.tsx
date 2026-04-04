@@ -1,8 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, ChevronRight, ShieldCheck } from 'lucide-react'
+import { ExternalLink, Clock, DollarSign, ArrowRight, CheckCircle2, ChevronRight, ShieldCheck, Info } from 'lucide-react'
 import type { PathwayMatch } from '@/lib/types'
+import { useI18n } from '@/context/I18nContext'
 
 interface PathwayMatchCardProps {
   pathway: PathwayMatch
@@ -24,6 +25,7 @@ const scoreColor = (score: number) => {
 }
 
 function ScoreRing({ score }: { score: number }) {
+  const { t } = useI18n()
   const r = 28
   const circumference = 2 * Math.PI * r
   const { stroke, text } = scoreColor(score)
@@ -55,13 +57,14 @@ function ScoreRing({ score }: { score: number }) {
         >
           {score}%
         </motion.span>
-        <span className="text-[9px] text-[#A3A3A3] mt-0.5">match</span>
+        <span className="text-[9px] text-[#A3A3A3] mt-0.5">{t('card.match')}</span>
       </div>
     </div>
   )
 }
 
 export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: PathwayMatchCardProps) {
+  const { t } = useI18n()
   const diff = difficultyConfig[pathway.difficulty]
 
   return (
@@ -82,141 +85,144 @@ export function PathwayMatchCard({ pathway, rank, isSelected, onSelect }: Pathwa
             : 'border-[#E5E5E5] bg-white hover:border-[#534AB7]/40 hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]'
       }`}
     >
-      {/* Verified pathway banner */}
       {pathway.isVerified && (
         <div className="flex items-center gap-1.5 px-5 py-2 bg-[#E1F5EE] rounded-t-[15px] border-b border-[#1D9E75]/20">
           <ShieldCheck size={12} className="text-[#1D9E75] flex-shrink-0" />
           <span className="text-[10px] font-semibold text-[#1D9E75] uppercase tracking-wide">
-            Verified Immigration Pathway
+            {t('card.verified')}
           </span>
           {rank === 0 && (
-            <span className="ml-auto text-[10px] font-semibold text-[#1D9E75]">Best match</span>
+            <span className="ml-auto text-[10px] font-semibold text-[#1D9E75]">{t('card.bestMatch')}</span>
           )}
         </div>
       )}
 
       <div className="p-5">
+        {rank === 0 && !pathway.isVerified && (
+          <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 bg-[#534AB7] rounded-full text-[10px] font-semibold text-white">
+            {t('card.bestMatch')}
+          </div>
+        )}
 
-      {/* Rank badge (non-verified cards only) */}
-      {rank === 0 && !pathway.isVerified && (
-        <div className="absolute -top-2.5 left-4 px-2.5 py-0.5 bg-[#534AB7] rounded-full text-[10px] font-semibold text-white">
-          Best match
-        </div>
-      )}
-
-      <div className="flex items-start gap-5">
-        {/* Left: info */}
-        <div className="flex-1 min-w-0">
-          {/* Header: flag vertically centered with title block */}
-          <div className="flex gap-3 mb-2">
-            <span
-              className="text-[2rem] leading-none flex-shrink-0 self-center select-none"
-              aria-hidden
-            >
-              {pathway.flag}
-            </span>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <h3 className="font-semibold text-[#171717] text-[17px] sm:text-[18px] leading-snug tracking-tight">
-                {pathway.name}
-              </h3>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-                <span className="text-[13px] text-[#737373]">{pathway.category}</span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${diff.bg} ${diff.text} ${diff.border}`}>
-                  {pathway.difficulty}
-                </span>
+        <div className="flex items-start gap-5">
+          <div className="flex-1 min-w-0">
+            <div className="flex gap-3 mb-2">
+              <span className="text-[2rem] leading-none flex-shrink-0 self-center select-none" aria-hidden>
+                {pathway.flag}
+              </span>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h3 className="font-semibold text-[#171717] text-[17px] sm:text-[18px] leading-snug tracking-tight">
+                  {pathway.name}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+                  <span className="text-[13px] text-[#737373]">{pathway.category}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${diff.bg} ${diff.text} ${diff.border}`}>
+                    {pathway.difficulty}
+                  </span>
+                </div>
               </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[#737373] mt-3 mb-3">
+              <span className="flex items-center gap-1.5">
+                <Clock size={13} className="text-[#A3A3A3] shrink-0" />
+                {pathway.estimatedTimeline}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <DollarSign size={13} className="text-[#A3A3A3] shrink-0" />
+                {pathway.processingFeeRange}
+              </span>
+            </div>
+
+            <ul className="space-y-1 mb-3">
+              {pathway.matchReasons.slice(0, 3).map((r, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#525252]">
+                  <CheckCircle2 size={11} className="text-[#1D9E75] mt-0.5 flex-shrink-0" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+
+            {pathway.pathwayTips && pathway.pathwayTips.length > 0 && (
+              <ul className="space-y-1.5 mb-3">
+                {pathway.pathwayTips.map((tip, i) => (
+                  <li
+                    key={i}
+                    className="flex items-start gap-1.5 text-[11px] text-[#92400E] bg-amber-50 border border-amber-100 rounded-[8px] px-2.5 py-2"
+                  >
+                    <Info size={12} className="text-amber-600 mt-0.5 flex-shrink-0" aria-hidden />
+                    <span>
+                      <span className="font-semibold text-amber-800">{t('card.pathwayTip')}: </span>
+                      {tip}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {pathway.requirements.slice(0, 3).map((req, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-2 py-0.5 bg-[#F5F5F5] rounded-full text-[10px] text-[#525252]"
+                >
+                  {req}
+                </span>
+              ))}
+            </div>
+
+            <div className="flex items-start gap-1.5 p-2.5 bg-[#EEEDFE] rounded-[8px]">
+              <ChevronRight size={11} className="text-[#534AB7] mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-[#534AB7] font-medium leading-tight">{pathway.nextStep}</p>
             </div>
           </div>
 
-          {/* Timeline + fee */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[#737373] mt-3 mb-3">
-            <span className="flex items-center gap-1.5">
-              <Clock size={13} className="text-[#A3A3A3] shrink-0" />
-              {pathway.estimatedTimeline}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <DollarSign size={13} className="text-[#A3A3A3] shrink-0" />
-              {pathway.processingFeeRange}
-            </span>
-          </div>
+          <div className="flex flex-col items-center gap-3 flex-shrink-0">
+            <ScoreRing score={pathway.matchScore} />
 
-          {/* Match reasons */}
-          <ul className="space-y-1 mb-3">
-            {pathway.matchReasons.slice(0, 3).map((r, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#525252]">
-                <CheckCircle2 size={11} className="text-[#1D9E75] mt-0.5 flex-shrink-0" />
-                {r}
-              </li>
-            ))}
-          </ul>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => { e.stopPropagation(); onSelect() }}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${
+                isSelected
+                  ? 'bg-[#534AB7] text-white'
+                  : 'bg-[#F5F5F5] text-[#525252] hover:bg-[#EEEDFE] hover:text-[#534AB7]'
+              }`}
+            >
+              {isSelected ? t('card.selected') : t('card.viewPlan')} <ArrowRight size={10} />
+            </motion.button>
 
-          {/* Key requirements */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {pathway.requirements.slice(0, 3).map((req, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center px-2 py-0.5 bg-[#F5F5F5] rounded-full text-[10px] text-[#525252]"
+            {pathway.officialUrl && (
+              <a
+                href={pathway.officialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-[10px] text-[#A3A3A3] hover:text-[#534AB7] transition-colors"
               >
-                {req}
-              </span>
+                IRCC <ExternalLink size={9} />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {pathway.sources.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-[#F5F5F5] flex flex-wrap gap-1.5">
+            {pathway.sources.slice(0, 3).map((s, i) => (
+              <a
+                key={i}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full text-[10px] text-[#737373] hover:text-[#534AB7] hover:border-[#534AB7]/30 transition-colors"
+              >
+                <ExternalLink size={8} />
+                {s.title}
+              </a>
             ))}
           </div>
-
-          {/* Next step */}
-          <div className="flex items-start gap-1.5 p-2.5 bg-[#EEEDFE] rounded-[8px]">
-            <ChevronRight size={11} className="text-[#534AB7] mt-0.5 flex-shrink-0" />
-            <p className="text-[11px] text-[#534AB7] font-medium leading-tight">{pathway.nextStep}</p>
-          </div>
-        </div>
-
-        {/* Right: score ring + CTA */}
-        <div className="flex flex-col items-center gap-3 flex-shrink-0">
-          <ScoreRing score={pathway.matchScore} />
-
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => { e.stopPropagation(); onSelect() }}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${
-              isSelected
-                ? 'bg-[#534AB7] text-white'
-                : 'bg-[#F5F5F5] text-[#525252] hover:bg-[#EEEDFE] hover:text-[#534AB7]'
-            }`}
-          >
-            {isSelected ? 'Selected' : 'View plan'} <ArrowRight size={10} />
-          </motion.button>
-
-          {pathway.officialUrl && (
-            <a
-              href={pathway.officialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-[10px] text-[#A3A3A3] hover:text-[#534AB7] transition-colors"
-            >
-              IRCC <ExternalLink size={9} />
-            </a>
-          )}
-        </div>
-      </div>
-
-      {/* Source citations footer */}
-      {pathway.sources.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-[#F5F5F5] flex flex-wrap gap-1.5">
-          {pathway.sources.slice(0, 3).map((s, i) => (
-            <a
-              key={i}
-              href={s.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#FAFAFA] border border-[#E5E5E5] rounded-full text-[10px] text-[#737373] hover:text-[#534AB7] hover:border-[#534AB7]/30 transition-colors"
-            >
-              <ExternalLink size={8} />
-              {s.title}
-            </a>
-          ))}
-        </div>
-      )}
+        )}
       </div>
     </motion.div>
   )

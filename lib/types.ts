@@ -93,6 +93,8 @@ export interface PathwayMatch {
   sources: SourceCitation[]
   /** True for pathways scored by the deterministic engine — confirmed legal immigration routes */
   isVerified?: boolean
+  /** Short actionable tips (e.g. language test guidance) shown below match strengths */
+  pathwayTips?: string[]
 }
 
 export interface RecommendedRoadmapStep {

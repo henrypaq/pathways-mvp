@@ -61,6 +61,21 @@ export async function startOver(): Promise<{ ok: boolean }> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Delete all documents from Storage + DB
+  const { data: docs } = await supabase
+    .from('documents')
+    .select('file_url')
+    .eq('user_id', user.id)
+
+  if (docs && docs.length > 0) {
+    const paths = docs.map((d) => d.file_url as string).filter(Boolean)
+    if (paths.length > 0) {
+      // Storage deletion is best-effort (files may have already been removed)
+      await supabase.storage.from('documents').remove(paths)
+    }
+    await supabase.from('documents').delete().eq('user_id', user.id)
+  }
+
   // Look up the profile row so we can delete its recommendations
   const { data: profileRow } = await supabase
     .from('profiles')

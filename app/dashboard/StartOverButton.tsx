@@ -3,18 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { startOver } from './actions'
-import { useOnboardingStore } from '@/lib/onboardingStore'
-import { useLanguage } from '@/context/LanguageContext'
 
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const VOICE_HISTORY_KEY = 'pathways_voice_onboarding_history'
+const LANGUAGE_KEY = 'pathways_preferred_language'
 
 export function StartOverButton() {
   const [isPending, setIsPending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const router = useRouter()
-  const { resetLanguage } = useLanguage()
 
   const handleConfirm = async () => {
     setIsPending(true)
@@ -23,15 +21,13 @@ export function StartOverButton() {
       try {
         localStorage.removeItem(ONBOARDING_DONE_KEY)
         localStorage.removeItem(PROFILE_KEY)
-        localStorage.removeItem('pathways_preferred_language')
+        localStorage.removeItem(LANGUAGE_KEY)
         sessionStorage.removeItem(VOICE_HISTORY_KEY)
       } catch {
         /* ignore storage errors */
       }
-      resetLanguage()
-      useOnboardingStore.getState().setStep(0)
-      useOnboardingStore.getState().setMode(null)
-      router.push('/onboarding')
+      // Redirect to login so the user re-selects their language first
+      router.push('/login?next=/onboarding')
     } finally {
       setIsPending(false)
       setConfirming(false)
