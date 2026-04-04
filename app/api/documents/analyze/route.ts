@@ -175,16 +175,41 @@ export async function POST(request: Request): Promise<Response> {
   const isJpeg = path.match(/\.(jpg|jpeg)$/) || contentType.includes('jpeg')
   const mediaType = isPdf ? 'application/pdf' : isJpeg ? 'image/jpeg' : 'image/png'
 
-  const docType = doc.type as string
-  const prompt = EXTRACTION_PROMPTS[docType] ?? 'Extract all relevant information from this document as JSON.'
-
-  // Build the content block (document for PDFs, image for raster files)
+  // Build the content block (document for PDFs, image for raster files) — used for type detection + extraction
   type PdfSource = { type: 'base64'; media_type: 'application/pdf'; data: string }
   type ImageSource = { type: 'base64'; media_type: 'image/jpeg' | 'image/png'; data: string }
 
   const contentBlock = isPdf
     ? ({ type: 'document' as const, source: { type: 'base64', media_type: 'application/pdf', data: base64 } as PdfSource })
     : ({ type: 'image' as const, source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png', data: base64 } as ImageSource })
+
+  // Auto-detect document type if not set
+  let docType = doc.type as string | null
+  if (!docType || docType === 'other') {
+    try {
+      const detectionMsg = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 30,
+        messages: [{
+          role: 'user',
+          content: [
+            contentBlock,
+            { type: 'text', text: 'What type of document is this? Reply with exactly one word from this list: passport, language_test, employment_letter, education_credential, bank_statement, police_certificate, photos, other' },
+          ],
+        }],
+      })
+      const raw = detectionMsg.content[0].type === 'text'
+        ? detectionMsg.content[0].text.trim().toLowerCase().split(/\s+/)[0]
+        : 'other'
+      const VALID_TYPES = new Set(['passport', 'language_test', 'employment_letter', 'education_credential', 'bank_statement', 'police_certificate', 'photos'])
+      docType = VALID_TYPES.has(raw) ? raw : 'other'
+      await supabase.from('documents').update({ type: docType }).eq('id', documentId)
+    } catch {
+      docType = 'other'
+    }
+  }
+
+  const prompt = EXTRACTION_PROMPTS[docType] ?? 'Extract all relevant information from this document as JSON.'
 
   let extracted: Record<string, unknown> = {}
   try {
@@ -229,5 +254,5 @@ export async function POST(request: Request): Promise<Response> {
 
   console.log(`[documents/analyze] ${docType} document ${documentId} analyzed — ${Object.keys(extracted).length} fields extracted, ${Object.keys(profileUpdates).length} profile updates`)
 
-  return Response.json({ extracted, profileUpdates })
+  return Response.json({ extracted, profileUpdates, detectedType: docType })
 }

@@ -4,12 +4,12 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import {
-  CheckCircle2, Loader2, AlertTriangle, Upload, X, Sparkles, Wand2,
+  CheckCircle2, Loader2, AlertTriangle, Upload, X,
+  Sparkles, Wand2, Eye, ArrowUpFromLine, FileText,
 } from 'lucide-react'
 import type { PathwaysProfile } from '@/types/voice'
 import { GenerateDocumentModal } from './GenerateDocumentModal'
 
-// Document types that can be AI-generated
 const GENERATABLE = new Set(['employment_letter'])
 
 interface DocumentRow {
@@ -43,23 +43,19 @@ function summarize(docType: string, extracted: Record<string, unknown>): string 
   if (extracted._error) return 'Could not extract — review manually'
   switch (docType) {
     case 'passport': {
-      const parts = [extracted.name, extracted.nationality && `Nationality: ${extracted.nationality as string}`].filter(Boolean)
-      return parts.join(' · ') || 'Passport processed'
+      const parts = [extracted.name, extracted.nationality && `· ${extracted.nationality as string}`].filter(Boolean)
+      return parts.join(' ') || 'Passport processed'
     }
-    case 'language_test': {
+    case 'language_test':
       return [extracted.test_name, extracted.overall_score != null && `Overall: ${extracted.overall_score as number}`].filter(Boolean).join(' ') || 'Test results processed'
-    }
-    case 'employment_letter': {
+    case 'employment_letter':
       return [extracted.job_title, extracted.employer_name && `at ${extracted.employer_name as string}`].filter(Boolean).join(' ') || 'Employment letter processed'
-    }
-    case 'education_credential': {
+    case 'education_credential':
       return [extracted.degree_type, extracted.institution_name].filter(Boolean).join(', ') || 'Credential processed'
-    }
-    case 'bank_statement': {
+    case 'bank_statement':
       return extracted.closing_balance != null
         ? `${extracted.currency ?? ''} ${Number(extracted.closing_balance).toLocaleString()} balance`
-        : 'Bank statement processed'
-    }
+        : 'Statement processed'
     case 'police_certificate':
       return extracted.result ? `Result: ${extracted.result as string}` : 'Certificate processed'
     case 'photos':
@@ -78,27 +74,24 @@ function detectIssues(docType: string, extracted: Record<string, unknown>): stri
         const expiry = new Date(extracted.expiry_date as string)
         const sixMonthsOut = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000)
         if (expiry < new Date()) issues.push('Passport appears to be expired — you must renew before applying')
-        else if (expiry < sixMonthsOut) issues.push('Passport expires within 6 months — renewal may be required before your application is processed')
+        else if (expiry < sixMonthsOut) issues.push('Passport expires within 6 months — renewal may be required')
       }
       break
     }
     case 'language_test': {
       const score = extracted.overall_score as number | undefined
-      if (score !== undefined && score < 6) {
+      if (score !== undefined && score < 6)
         issues.push(`Overall score of ${score} is likely below the CLB 7 minimum required for most Express Entry programs`)
-      }
       break
     }
     case 'education_credential': {
-      if (extracted.is_eca_assessed === false) {
-        issues.push('Educational Credential Assessment (ECA) may be required — confirm with a designated organization before applying')
-      }
+      if (extracted.is_eca_assessed === false)
+        issues.push('Educational Credential Assessment (ECA) may be required — confirm with a designated organization')
       break
     }
     case 'photos': {
-      if (extracted.meets_ircc_specs === false) {
+      if (extracted.meets_ircc_specs === false)
         issues.push('Photos do not appear to meet IRCC specifications — retake with a certified photographer')
-      }
       break
     }
   }
@@ -115,17 +108,87 @@ interface Props {
   onAnalyzingTypesChange?: (types: Set<string>) => void
 }
 
+// ── Preview modal ────────────────────────────────────────────────────────────
+
+function PreviewModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase.storage.from('documents').createSignedUrl(doc.file_url, 300)
+      setUrl(data?.signedUrl ?? null)
+      setLoading(false)
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc.file_url])
+
+  const isImage = /\.(jpg|jpeg|png)$/i.test(doc.file_url)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.18 }}
+        className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: '90vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 py-3.5 border-b border-[#F0F0F0] flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText size={14} className="text-[#534AB7]" />
+            <span className="text-[13px] font-semibold text-[#171717]">
+              {REQUIRED_DOCS.find(d => d.type === doc.type)?.label ?? getFileName(doc.file_url)}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-[#A3A3A3] hover:text-[#171717] transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-hidden bg-[#F8F7FB]" style={{ minHeight: '60vh' }}>
+          {loading ? (
+            <div className="h-full flex items-center justify-center">
+              <Loader2 size={24} className="text-[#534AB7] animate-spin" />
+            </div>
+          ) : !url ? (
+            <div className="h-full flex items-center justify-center text-[13px] text-[#A3A3A3]">
+              Could not load preview
+            </div>
+          ) : isImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="Document preview" className="w-full h-full object-contain" />
+          ) : (
+            <iframe
+              src={url}
+              className="w-full h-full border-0"
+              style={{ minHeight: '60vh' }}
+              title="Document preview"
+            />
+          )}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
 export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCountChange, onTypesChange, onAnalyzingTypesChange }: Props) {
   const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments)
-  const [selectedType, setSelectedType] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set())
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState<DocumentRow | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const uploadZoneRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
@@ -135,7 +198,6 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
     onTypesChange(new Set(documents.map((d) => d.type).filter(Boolean) as string[]))
   }, [documents, onCountChange, onTypesChange])
 
-  // Surface which doc types are currently being analyzed to the parent (for sidebar requirement ticking)
   useEffect(() => {
     if (!onAnalyzingTypesChange) return
     const types = new Set(
@@ -147,12 +209,6 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
     onAnalyzingTypesChange(types)
   }, [analyzing, documents, onAnalyzingTypesChange])
 
-  const scrollToUpload = (type: string) => {
-    setSelectedType(type)
-    uploadZoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setTimeout(() => fileInputRef.current?.click(), 400)
-  }
-
   async function analyzeDocument(docId: string) {
     setAnalyzing((prev) => new Set(prev).add(docId))
     try {
@@ -162,13 +218,17 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
         body: JSON.stringify({ documentId: docId }),
       })
       if (!res.ok) return
-      const { extracted, profileUpdates } = await res.json() as {
+      const { extracted, profileUpdates, detectedType } = await res.json() as {
         extracted: Record<string, unknown>
         profileUpdates: Record<string, unknown>
+        detectedType?: string
       }
-      setDocuments((prev) => prev.map((d) => d.id === docId ? { ...d, extracted_data: extracted } : d))
+      setDocuments((prev) => prev.map((d) =>
+        d.id === docId
+          ? { ...d, extracted_data: extracted, type: detectedType ?? d.type }
+          : d
+      ))
 
-      // Auto-apply non-intrusive profile updates
       if (Object.keys(profileUpdates).length > 0) {
         try {
           const raw = localStorage.getItem(PROFILE_KEY)
@@ -176,8 +236,8 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
           localStorage.setItem(PROFILE_KEY, JSON.stringify({ ...existing, ...profileUpdates }))
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
-            const { data: profile } = await supabase.from('profiles').select('id, data').eq('user_id', user.id).single()
-            if (profile) await supabase.from('profiles').update({ data: { ...(profile.data as Record<string, unknown>), ...profileUpdates } }).eq('id', profile.id)
+            const { data: prof } = await supabase.from('profiles').select('id, data').eq('user_id', user.id).single()
+            if (prof) await supabase.from('profiles').update({ data: { ...(prof.data as Record<string, unknown>), ...profileUpdates } }).eq('id', prof.id)
           }
         } catch { /* best-effort */ }
       }
@@ -188,34 +248,46 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
     }
   }
 
-  async function handleFile(file: File) {
-    setUploadError(null)
-    if (!selectedType) { setUploadError('Please select a document type first.'); return }
-    if (!caseId) { setUploadError('Session error — please refresh the page.'); return }
-    if (file.size > 10 * 1024 * 1024) { setUploadError('File exceeds the 10 MB limit.'); return }
-    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
-      setUploadError('Only PDF, JPG, and PNG files are accepted.')
-      return
+  async function uploadFile(file: File): Promise<DocumentRow | null> {
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError(`"${file.name}" exceeds the 10 MB limit.`)
+      return null
     }
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+      setUploadError(`"${file.name}" — only PDF, JPG, and PNG files are accepted.`)
+      return null
+    }
+    if (!caseId) { setUploadError('Session error — please refresh the page.'); return null }
+
+    const filePath = `${userId}/uploads/${Date.now()}_${file.name}`
+    const { data: storageData, error: storageError } = await supabase.storage.from('documents').upload(filePath, file)
+    if (storageError) { setUploadError(`Upload failed: ${storageError.message}`); return null }
+
+    const { data: row, error: dbError } = await supabase
+      .from('documents')
+      .insert({ user_id: userId, case_id: caseId, type: null, file_url: storageData.path, extracted_data: null })
+      .select().single()
+    if (dbError) {
+      setUploadError(dbError.message)
+      await supabase.storage.from('documents').remove([storageData.path])
+      return null
+    }
+    return row as DocumentRow
+  }
+
+  async function handleFiles(files: File[]) {
+    if (!files.length) return
+    setUploadError(null)
     setUploading(true)
     try {
-      const filePath = `${userId}/${selectedType}/${Date.now()}_${file.name}`
-      const { data: storageData, error: storageError } = await supabase.storage.from('documents').upload(filePath, file)
-      if (storageError) { setUploadError(`Upload failed: ${storageError.message}`); return }
-      const { data: row, error: dbError } = await supabase
-        .from('documents')
-        .insert({ user_id: userId, case_id: caseId, type: selectedType, file_url: storageData.path, extracted_data: null })
-        .select().single()
-      if (dbError) {
-        setUploadError(dbError.message)
-        await supabase.storage.from('documents').remove([storageData.path])
-        return
+      const results = await Promise.all(files.map(uploadFile))
+      const uploaded = results.filter((r): r is DocumentRow => r !== null)
+      if (uploaded.length > 0) {
+        setDocuments((prev) => [...uploaded, ...prev])
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        // Analyze all in parallel
+        uploaded.forEach(doc => void analyzeDocument(doc.id))
       }
-      const newDoc = row as DocumentRow
-      setDocuments((prev) => [newDoc, ...prev])
-      setSelectedType('')
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      void analyzeDocument(newDoc.id)
     } finally {
       setUploading(false)
     }
@@ -223,10 +295,10 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) void handleFile(file)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length) void handleFiles(files)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedType, caseId, userId])
+  }, [caseId, userId])
 
   async function handleDelete(doc: DocumentRow) {
     setConfirmDeleteId(null)
@@ -245,24 +317,98 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
   const uploadedCount = REQUIRED_DOCS.filter((d) => uploadedByType.has(d.type)).length
 
   return (
-    <div className="space-y-6">
-      {/* Required documents checklist */}
+    <div className="space-y-0">
+      {/* Single unified card */}
       <div className="bg-white rounded-2xl border border-[#EBEBEB] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+
+        {/* Header */}
         <div className="px-6 py-4 border-b border-[#F5F5F5] flex items-center justify-between">
           <div>
-            <h3 className="text-[14px] font-semibold text-[#171717]">Document Checklist</h3>
-            <p className="text-[12px] text-[#737373] mt-0.5">{uploadedCount} of {REQUIRED_DOCS.length} documents uploaded</p>
+            <h3 className="text-[14px] font-semibold text-[#171717]">Documents</h3>
+            <p className="text-[12px] text-[#737373] mt-0.5">{uploadedCount} of {REQUIRED_DOCS.length} requirements fulfilled</p>
           </div>
-          {/* Mini progress bar */}
-          <div className="w-24 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-[#534AB7] rounded-full"
-              animate={{ width: `${(uploadedCount / REQUIRED_DOCS.length) * 100}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-            />
+          <div className="flex items-center gap-3">
+            <div className="w-20 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-[#534AB7] rounded-full"
+                animate={{ width: `${(uploadedCount / REQUIRED_DOCS.length) * 100}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+            </div>
           </div>
         </div>
 
+        {/* Drop zone */}
+        <div className="px-6 py-5 border-b border-[#F5F5F5]">
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`relative border-2 border-dashed rounded-xl transition-all cursor-pointer ${
+              dragOver
+                ? 'border-[#534AB7] bg-[#EEEDFE]'
+                : 'border-[#E0DEFF] hover:border-[#534AB7] hover:bg-[#FAFAFE] bg-[#FDFCFF]'
+            }`}
+          >
+            <div className="flex items-center gap-4 px-5 py-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                uploading ? 'bg-[#EEEDFE]' : dragOver ? 'bg-[#534AB7]' : 'bg-[#EEEDFE]'
+              }`}>
+                {uploading
+                  ? <Loader2 size={18} className="text-[#534AB7] animate-spin" />
+                  : <Upload size={16} className={dragOver ? 'text-white' : 'text-[#534AB7]'} />
+                }
+              </div>
+              <div className="min-w-0">
+                {uploading ? (
+                  <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
+                ) : (
+                  <>
+                    <p className="text-[13px] font-medium text-[#171717]">
+                      Drop files here, or <span className="text-[#534AB7]">click to browse</span>
+                    </p>
+                    <p className="text-[11px] text-[#A3A3A3] mt-0.5">
+                      PDF, JPG, PNG · Max 10 MB · Multiple files supported · AI identifies each document automatically
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? [])
+                if (files.length) void handleFiles(files)
+              }}
+            />
+          </div>
+
+          <AnimatePresence>
+            {uploadError && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />
+                  <p className="text-[12px] text-red-700 flex-1">{uploadError}</p>
+                  <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0">
+                    <X size={13} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Checklist rows */}
         <div className="divide-y divide-[#F9F9F9]">
           {REQUIRED_DOCS.map((docSpec) => {
             const doc = uploadedByType.get(docSpec.type)
@@ -273,66 +419,77 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
 
             return (
               <div key={docSpec.type} className="px-6 py-4">
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3.5">
                   {/* Status icon */}
-                  <div className="mt-0.5 flex-shrink-0">
+                  <div className="mt-0.5 flex-shrink-0 w-5 h-5 flex items-center justify-center">
                     {isAnalyzing ? (
-                      <div className="w-5 h-5 flex items-center justify-center">
-                        <Loader2 size={16} className="text-[#534AB7] animate-spin" />
-                      </div>
+                      <Loader2 size={15} className="text-[#534AB7] animate-spin" />
                     ) : isUploaded && issues.length > 0 ? (
                       <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center">
-                        <AlertTriangle size={11} className="text-amber-600" />
+                        <AlertTriangle size={10} className="text-amber-600" />
                       </div>
                     ) : isUploaded ? (
-                      <CheckCircle2 size={20} className="text-[#1D9E75]" />
+                      <CheckCircle2 size={19} className="text-[#1D9E75]" />
                     ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-[#D4D4D4]" />
+                      <div className="w-4.5 h-4.5 rounded-full border-2 border-[#D4D4D4]" />
                     )}
                   </div>
 
-                  {/* Info */}
+                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={`text-[13px] font-medium ${isUploaded && issues.length === 0 ? 'text-[#171717]' : isUploaded ? 'text-[#171717]' : 'text-[#525252]'}`}>
+                      <p className={`text-[13px] font-medium leading-snug ${isUploaded ? 'text-[#171717]' : 'text-[#525252]'}`}>
                         {docSpec.label}
                       </p>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
                         {isUploaded ? (
                           <>
-                            {confirmDeleteId === doc!.id ? (
+                            {/* Preview */}
+                            <button
+                              onClick={() => setPreviewDoc(doc)}
+                              title="Preview document"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A3A3A3] hover:text-[#534AB7] hover:bg-[#F4F2FF] transition-colors"
+                            >
+                              <Eye size={13} />
+                            </button>
+
+                            {confirmDeleteId === doc.id ? (
                               <>
-                                <button onClick={() => void handleDelete(doc!)} className="text-[11px] text-red-600 font-medium hover:text-red-800 transition-colors">Remove</button>
+                                <button onClick={() => void handleDelete(doc)} className="text-[11px] text-red-600 font-semibold hover:text-red-800 transition-colors px-2">Remove</button>
                                 <button onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-[#A3A3A3] hover:text-[#525252] transition-colors">Cancel</button>
                               </>
                             ) : (
                               <>
                                 <button
-                                  onClick={() => scrollToUpload(docSpec.type)}
-                                  className="text-[11px] text-[#534AB7] font-medium hover:text-[#3C3489] transition-colors"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="text-[11px] text-[#737373] hover:text-[#534AB7] font-medium transition-colors px-2 py-1 rounded-lg hover:bg-[#F4F2FF]"
                                 >
                                   Replace
                                 </button>
-                                <button onClick={() => setConfirmDeleteId(doc!.id)} className="text-[#D4D4D4] hover:text-[#A3A3A3] transition-colors">
+                                <button onClick={() => setConfirmDeleteId(doc.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#D4D4D4] hover:text-[#A3A3A3] hover:bg-[#F5F5F5] transition-colors">
                                   <X size={13} />
                                 </button>
                               </>
                             )}
                           </>
                         ) : (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             {GENERATABLE.has(docSpec.type) && (
                               <button
                                 onClick={() => setGenerateModalOpen(true)}
-                                className="flex items-center gap-1 text-[11px] font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors px-2.5 py-1 rounded-full border border-[#534AB7]/30 hover:bg-[#EEEDFE]"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-[#534AB7] to-[#7B6FD6] text-white hover:from-[#3C3489] hover:to-[#534AB7] transition-all shadow-sm shadow-[#534AB7]/20"
                               >
-                                <Wand2 size={10} /> Generate
+                                <Wand2 size={10} />
+                                Generate with AI
                               </button>
                             )}
                             <button
-                              onClick={() => scrollToUpload(docSpec.type)}
-                              className="text-[11px] font-medium text-[#534AB7] hover:text-[#3C3489] transition-colors px-2.5 py-1 rounded-full bg-[#EEEDFE] hover:bg-[#E0DEFF]"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white border border-[#E0DEFF] text-[#534AB7] hover:bg-[#F4F2FF] hover:border-[#C5BFFF] transition-all"
                             >
+                              <ArrowUpFromLine size={10} />
                               Upload
                             </button>
                           </div>
@@ -341,10 +498,10 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                     </div>
 
                     {/* Status line */}
-                    <p className="text-[11px] mt-0.5">
+                    <p className="text-[11px] mt-0.5 leading-snug">
                       {isAnalyzing ? (
                         <span className="text-[#534AB7] flex items-center gap-1">
-                          <Sparkles size={10} /> Analyzing with AI…
+                          <Sparkles size={9} /> Identifying and analyzing with AI…
                         </span>
                       ) : hasData ? (
                         <span className="text-[#1D9E75]">{summarize(docSpec.type, doc!.extracted_data!)}</span>
@@ -369,8 +526,8 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-3 ml-9 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                        <AlertTriangle size={12} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="mt-2.5 ml-[34px] flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl">
+                        <AlertTriangle size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
                         <p className="text-[11px] text-amber-800 leading-relaxed">{issues[0]}</p>
                       </div>
                     </motion.div>
@@ -382,81 +539,14 @@ export function DocumentsStep({ initialDocuments, caseId, userId, profile, onCou
         </div>
       </div>
 
-      {/* Upload zone */}
-      <div className="bg-white rounded-2xl border border-[#EBEBEB] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="px-6 pt-6 pb-4">
-          <h3 className="text-[15px] font-semibold text-[#171717] mb-1">Upload Document</h3>
-          <p className="text-[12px] text-[#737373]">Choose a document type, then drop your file or click to browse. AI analyzes each upload automatically.</p>
-        </div>
+      {/* Preview modal */}
+      <AnimatePresence>
+        {previewDoc && (
+          <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
+        )}
+      </AnimatePresence>
 
-        <div className="px-6 pb-6 space-y-3">
-          {/* Type dropdown */}
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full border border-[#E5E5E5] rounded-xl text-[13px] text-[#171717] px-3 py-2.5 focus:outline-none focus:border-[#534AB7] transition-colors bg-white appearance-none"
-          >
-            <option value="">Select document type…</option>
-            {REQUIRED_DOCS.map((d) => (
-              <option key={d.type} value={d.type}>{d.label}</option>
-            ))}
-          </select>
-
-          {/* Drop zone */}
-          <div
-            ref={uploadZoneRef}
-            onDragOver={(e) => { e.preventDefault(); if (selectedType) setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            onClick={() => { if (selectedType) fileInputRef.current?.click() }}
-            className={`relative border-2 border-dashed rounded-2xl transition-all ${
-              !selectedType
-                ? 'border-[#E5E5E5] opacity-50 cursor-not-allowed'
-                : dragOver
-                ? 'border-[#534AB7] bg-[#EEEDFE] cursor-pointer'
-                : 'border-[#D4D4D4] hover:border-[#534AB7] hover:bg-[#FAFAFE] cursor-pointer'
-            }`}
-            style={{ minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <div className="flex flex-col items-center gap-4 py-8 px-6 text-center">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
-                uploading ? 'bg-[#EEEDFE]' : selectedType ? 'bg-[#EEEDFE]' : 'bg-[#F0F0F0]'
-              }`}>
-                {uploading
-                  ? <Loader2 size={24} className="text-[#534AB7] animate-spin" />
-                  : <Upload size={22} className={selectedType ? 'text-[#534AB7]' : 'text-[#A3A3A3]'} />}
-              </div>
-              {uploading ? (
-                <p className="text-[13px] font-medium text-[#534AB7]">Uploading…</p>
-              ) : selectedType ? (
-                <>
-                  <p className="text-[13px] text-[#525252]">
-                    Drop your <strong className="text-[#534AB7]">{REQUIRED_DOCS.find(d => d.type === selectedType)?.label}</strong> here
-                  </p>
-                  <p className="text-[11px] text-[#A3A3A3]">or click to browse · PDF, JPG, PNG · Max 10 MB</p>
-                </>
-              ) : (
-                <p className="text-[13px] text-[#A3A3A3]">Select a document type above to begin uploading</p>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleFile(file) }}
-            />
-          </div>
-
-          {uploadError && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-              <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />
-              <p className="text-[12px] text-red-700">{uploadError}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
+      {/* Generate modal */}
       {generateModalOpen && caseId && (
         <GenerateDocumentModal
           docType="employment_letter"
