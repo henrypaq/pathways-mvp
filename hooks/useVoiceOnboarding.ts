@@ -5,6 +5,7 @@ import type { OrbState, PathwaysProfile, ConversationTurn } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS, normalizeVoiceProfile } from '@/types/voice'
 import { getSpeechRecognitionCtor } from '@/lib/speechRecognition'
 import { savePathwaysProfileToSupabase } from '@/lib/supabase/savePathwaysProfile'
+import { useLanguage } from '@/context/LanguageContext'
 
 const PROFILE_KEY = process.env.NEXT_PUBLIC_PROFILE_KEY ?? 'pathways_profile'
 const ONBOARDING_DONE_KEY = process.env.NEXT_PUBLIC_ONBOARDING_DONE_KEY ?? 'pathways_onboarding_complete'
@@ -59,6 +60,7 @@ export interface UseVoiceOnboardingReturn {
 
 export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
   const mountedRef = useRef(true)
+  const { language } = useLanguage()
   const initialHistory = loadVoiceHistory()
 
   const [orbState, setOrbState] = useState<OrbState>('idle')
@@ -390,7 +392,7 @@ export function useVoiceOnboarding(): UseVoiceOnboardingReturn {
     const recognition = new Ctor()
     recognition.continuous = false
     recognition.interimResults = false
-    recognition.lang = 'en-US'
+    recognition.lang = language === 'fr' ? 'fr-FR' : 'en-US'
     recognition.maxAlternatives = 1
 
     let gotResult = false

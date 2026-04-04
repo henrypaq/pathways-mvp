@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(curl -s \"https://api.elevenlabs.io/v1/voices/EXAVITQu4vr4xnSDxMaL\" -H \"xi-api-key: sk_d8fa5f362779cc7da6c540bb9ec1b5fb51c8b94a2f7c7042\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Name:', d.get\\('name'\\)\\); print\\('Labels:', d.get\\('labels'\\)\\); ft=d.get\\('fine_tuning',{}\\); print\\('FT language:', ft.get\\('language'\\)\\); print\\('FT is_allowed_to_fine_tune:', ft.get\\('is_allowed_to_fine_tune'\\)\\); print\\('Available for tiers:', d.get\\('available_for_tiers'\\)\\); print\\('High_quality_base_model_ids:', d.get\\('high_quality_base_model_ids'\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")"
     ]
   }
 }

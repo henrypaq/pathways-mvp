@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { PathwaysProfile } from '@/types/voice'
 import { REQUIRED_PROFILE_FIELDS, PROFILE_FIELD_LABELS } from '@/types/voice'
 import { getCountryLabel } from '@/lib/countries'
+import { LanguageSelector } from '@/components/voice/LanguageSelector'
 
 const COUNTRY_FIELDS = new Set<keyof PathwaysProfile>(['current_country', 'nationality', 'destination_country'])
 
@@ -119,6 +120,9 @@ export function ProfilePanel({ profile, isComplete }: ProfilePanelProps) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Language selector — always shown at the bottom of the panel */}
+      <LanguageSelector />
     </div>
   )
 }

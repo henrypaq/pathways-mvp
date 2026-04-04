@@ -1,14 +1,55 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useOnboardingStore } from "@/lib/onboardingStore";
 import { PathwaysOrb } from "@/components/voice/PathwaysOrb";
 import { ProfilePanel } from "@/components/voice/ProfilePanel";
+import { WelcomeAnimation } from "@/components/voice/WelcomeAnimation";
 import { useVoiceOnboarding } from "@/hooks/useVoiceOnboarding";
 import { ChatOnboarding } from "@/components/onboarding/ChatOnboarding";
 import { ManualProfileForm } from "@/components/onboarding/ManualProfileForm";
 import { getSpeechRecognitionCtor } from "@/lib/speechRecognition";
+import { useLanguage, type Language } from "@/context/LanguageContext";
+
+// Welcome messages spoken when the user picks a language.
+// Voice: ElevenLabs "Sarah" (EXAVITQu4vr4xnSDxMaL) via eleven_flash_v2_5 — a multilingual
+// model that natively supports EN + FR without any voice change.
+// (The voices_read permission was missing from the API key so we couldn't query the voice
+// endpoint directly, but eleven_flash_v2_5 is documented to support 32 languages including
+// both English and French.)
+const WELCOME_TEXT: Record<Language, string> = {
+  en: "Welcome to Pathways. I'm here to guide you through your immigration journey.",
+  fr: "Bienvenue sur Pathways. Je suis ici pour vous accompagner dans votre parcours d'immigration.",
+}
+
+async function playWelcomeMessage(
+  lang: Language,
+  signal: AbortSignal,
+): Promise<void> {
+  const text = WELCOME_TEXT[lang]
+  try {
+    const res = await fetch('/api/voice/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({ text }),
+    })
+    if (!res.ok) return
+    const buffer = await res.arrayBuffer()
+    if (signal.aborted || buffer.byteLength === 0) return
+    const blob = new Blob([buffer], { type: 'audio/mpeg' })
+    const url = URL.createObjectURL(blob)
+    const audio = new Audio(url)
+    const cleanup = () => URL.revokeObjectURL(url)
+    audio.onended = cleanup
+    audio.onerror = cleanup
+    signal.addEventListener('abort', () => { audio.pause(); cleanup() }, { once: true })
+    audio.play().catch(cleanup)
+  } catch {
+    /* AbortError or network failure — silently ignore */
+  }
+}
 
 
 function VoiceMode() {
@@ -23,11 +64,23 @@ function VoiceMode() {
     requiredFieldsRemaining,
   } = useVoiceOnboarding();
   const router = useRouter();
+  const { language, isLanguageLocked } = useLanguage();
+  const welcomeAbortRef = useRef<AbortController | null>(null);
 
   // Fire welcome once when voice mode becomes active
   useEffect(() => {
     triggerWelcome();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Play a localised welcome message the first time the user locks their language
+  useEffect(() => {
+    if (!isLanguageLocked) return;
+    welcomeAbortRef.current?.abort();
+    const ac = new AbortController();
+    welcomeAbortRef.current = ac;
+    void playWelcomeMessage(language, ac.signal);
+    return () => ac.abort();
+  }, [isLanguageLocked, language]);
 
   const isSpeechSupported =
     typeof window !== "undefined" && !!getSpeechRecognitionCtor();
@@ -66,6 +119,9 @@ function VoiceMode() {
           gap: "24px",
         }}
       >
+        {/* Cycling "Welcome / Bienvenue" animation — collapses after language is locked */}
+        <WelcomeAnimation />
+
         {/* Unsupported browser warning — shown ABOVE orb so it's seen before tapping */}
         {!isSpeechSupported && (
           <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-[10px] text-sm text-amber-700 text-center max-w-xs">
